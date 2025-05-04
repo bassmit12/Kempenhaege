@@ -26,9 +26,6 @@ jobs:
   build:
     name: Build & Release
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
 
     steps:
       #1 Checkout Repository
@@ -40,14 +37,18 @@ jobs:
       #2 Show Directory Structure (for debugging)
       - name: Show Directory Structure
         run: |
-          echo "Working directory:"
-          pwd
-          echo "App directory structure:"
+          echo "Current directory: $(pwd)"
+          echo "Repository root contents:"
           ls -la
-          echo "Android directory:"
-          ls -la android
-          echo "AndroidManifest.xml location:"
-          find android -name "AndroidManifest.xml"
+          if [ -d "frontend" ]; then
+            echo "Frontend directory exists, contents:"
+            ls -la frontend
+            WORKDIR="frontend"
+          else
+            echo "No frontend directory found, assuming app is at repository root"
+            WORKDIR="."
+          fi
+          echo "WORKDIR=$WORKDIR" >> $GITHUB_ENV
 
       #3 Setup Java
       - name: Set Up Java
@@ -65,7 +66,33 @@ jobs:
           channel: "stable"
           cache: true # Enable Flutter tool caching
 
-      #5 Cache Pub Dependencies
+      #5 Determine Android and Flutter Paths
+      - name: Locate Android and Flutter Structure
+        run: |
+          if [ -d "${{ env.WORKDIR }}/android" ]; then
+            echo "Android directory found in ${{ env.WORKDIR }}/android"
+            echo "ANDROID_DIR=${{ env.WORKDIR }}/android" >> $GITHUB_ENV
+          else
+            echo "No Android directory found at ${{ env.WORKDIR }}/android"
+            echo "Looking for Android directory elsewhere..."
+            ANDROID_PATH=$(find . -type d -name "android" | head -1)
+            if [ -n "$ANDROID_PATH" ]; then
+              echo "Found Android directory at: $ANDROID_PATH"
+              echo "ANDROID_DIR=$ANDROID_PATH" >> $GITHUB_ENV
+              # Determine the app directory by going up one level from android
+              APP_DIR=$(dirname "$ANDROID_PATH")
+              echo "Setting WORKDIR to $APP_DIR"
+              echo "WORKDIR=$APP_DIR" >> $GITHUB_ENV
+            else
+              echo "ERROR: Could not find Android directory!"
+              exit 1
+            fi
+          fi
+          
+          echo "Looking for AndroidManifest.xml files:"
+          find . -name "AndroidManifest.xml"
+
+      #6 Cache Pub Dependencies
       - name: Cache Pub Dependencies
         uses: actions/cache@v3
         with:
@@ -73,11 +100,11 @@ jobs:
             ${{ env.PUB_CACHE }}
             .dart_tool/
             ~/.pub-cache/
-          key: ${{ runner.os }}-pub-${{ hashFiles('frontend/**/pubspec.lock') }}
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: |
             ${{ runner.os }}-pub-
 
-      #6 Cache Gradle Dependencies
+      #7 Cache Gradle Dependencies
       - name: Cache Gradle Dependencies
         uses: actions/cache@v3
         with:
@@ -85,21 +112,22 @@ jobs:
             ~/.gradle/caches
             ~/.gradle/wrapper
             ~/.android/build-cache
-            frontend/android/.gradle
-          key: ${{ runner.os }}-gradle-${{ hashFiles('frontend/**/*.gradle*', 'frontend/**/gradle-wrapper.properties') }}
+            ${{ env.ANDROID_DIR }}/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      #7 Install Flutter Dependencies
+      #8 Install Flutter Dependencies
       - name: Install Flutter Dependencies
+        working-directory: ${{ env.WORKDIR }}
         run: flutter pub get
 
-      #8 Create Local Properties
+      #9 Create Local Properties
       - name: Create Local Properties
         run: |
-          echo "flutter.sdk=/opt/hostedtoolcache/flutter/stable-3.13.9-x64" > android/local.properties
+          echo "flutter.sdk=/opt/hostedtoolcache/flutter/stable-3.13.9-x64" > ${{ env.ANDROID_DIR }}/local.properties
 
-      #9 Check for keystore secret
+      #10 Check for keystore secret
       - name: Check for keystore secret
         id: check_keystore
         run: |
@@ -109,59 +137,78 @@ jobs:
             echo "has_keystore=false" >> $GITHUB_OUTPUT
           fi
 
-      #10 Setup keystore from secrets
+      #11 Setup keystore from secrets
       - name: Setup keystore
         if: steps.check_keystore.outputs.has_keystore == 'true'
         run: |
-          mkdir -p android/app
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
-          echo "storeFile=../app/keystore.jks" > android/key.properties
-          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
-          echo "storePassword=${{ secrets.STORE_PASSWORD }}" >> android/key.properties
-          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+          mkdir -p ${{ env.ANDROID_DIR }}/app
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > ${{ env.ANDROID_DIR }}/app/keystore.jks
+          echo "storeFile=../app/keystore.jks" > ${{ env.ANDROID_DIR }}/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> ${{ env.ANDROID_DIR }}/key.properties
+          echo "storePassword=${{ secrets.STORE_PASSWORD }}" >> ${{ env.ANDROID_DIR }}/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> ${{ env.ANDROID_DIR }}/key.properties
 
           # Display the SHA-1 fingerprint for verification
-          keytool -list -v -keystore android/app/keystore.jks -alias ${{ secrets.KEY_ALIAS }} -storepass ${{ secrets.STORE_PASSWORD }} -keypass ${{ secrets.KEY_PASSWORD }} | grep "SHA1:"
+          keytool -list -v -keystore ${{ env.ANDROID_DIR }}/app/keystore.jks -alias ${{ secrets.KEY_ALIAS }} -storepass ${{ secrets.STORE_PASSWORD }} -keypass ${{ secrets.KEY_PASSWORD }} | grep "SHA1:"
 
-      #11 Use a Debug Key for PR Builds
+      #12 Use a Debug Key for PR Builds
       - name: Generate debug keystore for PR builds
         if: steps.check_keystore.outputs.has_keystore != 'true' || github.event_name == 'pull_request'
         run: |
-          mkdir -p android/app
-          keytool -genkeypair -v -keystore android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-          echo "storeFile=../app/debug.keystore" > android/key.properties
-          echo "keyAlias=androiddebugkey" >> android/key.properties
-          echo "storePassword=android" >> android/key.properties
-          echo "keyPassword=android" >> android/key.properties
+          mkdir -p ${{ env.ANDROID_DIR }}/app
+          keytool -genkeypair -v -keystore ${{ env.ANDROID_DIR }}/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          echo "storeFile=../app/debug.keystore" > ${{ env.ANDROID_DIR }}/key.properties
+          echo "keyAlias=androiddebugkey" >> ${{ env.ANDROID_DIR }}/key.properties
+          echo "storePassword=android" >> ${{ env.ANDROID_DIR }}/key.properties
+          echo "keyPassword=android" >> ${{ env.ANDROID_DIR }}/key.properties
 
-      #12 Ensure Flutter is using Android embedding v2
-      - name: Verify Android embedding version
+      #13 Locate and Check Android Manifest
+      - name: Check Android Manifest
         run: |
-          echo "Checking for MainActivity.kt..."
-          cat android/app/src/main/kotlin/com/example/ai_scheduling_app/MainActivity.kt
-          echo "Checking AndroidManifest.xml..."
-          cat android/app/src/main/AndroidManifest.xml
+          echo "AndroidManifest.xml files found:"
+          find ${{ env.ANDROID_DIR }} -name "AndroidManifest.xml"
+          
+          MAIN_MANIFEST="${{ env.ANDROID_DIR }}/app/src/main/AndroidManifest.xml"
+          if [ -f "$MAIN_MANIFEST" ]; then
+            echo "Main AndroidManifest.xml found at: $MAIN_MANIFEST"
+            echo "Contents:"
+            cat "$MAIN_MANIFEST"
+            
+            # Check if it includes the Android embedding v2 metadata
+            if grep -q "flutterEmbedding" "$MAIN_MANIFEST"; then
+              echo "Android embedding v2 metadata found in manifest"
+            else
+              echo "WARNING: Android embedding v2 metadata not found in manifest"
+            fi
+          else
+            echo "ERROR: Main AndroidManifest.xml not found at expected location: $MAIN_MANIFEST"
+            echo "Searching for AndroidManifest.xml files:"
+            find . -name "AndroidManifest.xml"
+          fi
 
-      #13 Build Release APK
+      #14 Build Release APK
       - name: Build Release APK
-        run: flutter build apk --release
+        working-directory: ${{ env.WORKDIR }}
+        run: flutter build apk --release --verbose
 
-      #14 Build App Bundle
+      #15 Build App Bundle
       - name: Build App Bundle
+        working-directory: ${{ env.WORKDIR }}
         run: flutter build appbundle --release
 
-      #15 Upload Release Artifacts
+      #16 Upload Release Artifacts
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Release-APK
           path: |
-            frontend/build/app/outputs/flutter-apk/app-release.apk
-            frontend/build/app/outputs/bundle/release/app-release.aab
+            ${{ env.WORKDIR }}/build/app/outputs/flutter-apk/app-release.apk
+            ${{ env.WORKDIR }}/build/app/outputs/bundle/release/app-release.aab
 
-      #16 Extract Version
+      #17 Extract Version
       - name: Extract version from pubspec.yaml
         id: extract_version
+        working-directory: ${{ env.WORKDIR }}
         run: |
           version=$(grep '^version: ' pubspec.yaml | cut -d ' ' -f 2 | tr -d '\r')
           # Strip build number part if present (after the +)
@@ -170,7 +217,7 @@ jobs:
           echo "FULL_VERSION=$version" >> $GITHUB_ENV
           echo "Extracted version: $version_without_build (full: $version)"
 
-      #17 Check if Tag Exists
+      #18 Check if Tag Exists
       - name: Check if Tag Exists
         id: check_tag
         run: |
@@ -187,7 +234,7 @@ jobs:
             echo "Tag $tag_name does not exist"
           fi
 
-      #18 Modify Version if Tag Exists
+      #19 Modify Version if Tag Exists
       - name: Modify Version if Tag Exists
         if: env.TAG_EXISTS == 'true'
         id: modify_version
@@ -205,12 +252,12 @@ jobs:
             echo "Modified tag v$new_version is available"
           fi
 
-      #19 Create Release
+      #20 Create Release
       - name: Create Release
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.create_release == 'true'
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "frontend/build/app/outputs/flutter-apk/app-release.apk,frontend/build/app/outputs/bundle/release/app-release.aab"
+          artifacts: "${{ env.WORKDIR }}/build/app/outputs/flutter-apk/app-release.apk,${{ env.WORKDIR }}/build/app/outputs/bundle/release/app-release.aab"
           tag: v${{ env.VERSION }}
           name: "Kempenhaege Schedule v${{ env.VERSION }}"
           body: |
