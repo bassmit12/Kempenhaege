@@ -84,9 +84,19 @@ jobs:
         run: |
           echo "flutter.sdk=/opt/hostedtoolcache/flutter/stable-3.19.0-x64" > android/local.properties
 
-      #8 Setup keystore from secrets (if available)
+      #8 Check for keystore secret
+      - name: Check for keystore secret
+        id: check_keystore
+        run: |
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "has_keystore=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_keystore=false" >> $GITHUB_OUTPUT
+          fi
+
+      #9 Setup keystore from secrets
       - name: Setup keystore
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        if: steps.check_keystore.outputs.has_keystore == 'true'
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
           echo "storeFile=../app/keystore.jks" > android/key.properties
@@ -97,9 +107,9 @@ jobs:
           # Display the SHA-1 fingerprint for verification
           keytool -list -v -keystore android/app/keystore.jks -alias ${{ secrets.KEY_ALIAS }} -storepass ${{ secrets.STORE_PASSWORD }} -keypass ${{ secrets.KEY_PASSWORD }} | grep "SHA1:"
 
-      #9 Use a Debug Key for PR Builds
+      #10 Use a Debug Key for PR Builds
       - name: Generate debug keystore for PR builds
-        if: ${{ github.event_name == 'pull_request' || secrets.KEYSTORE_BASE64 == '' }}
+        if: steps.check_keystore.outputs.has_keystore != 'true' || github.event_name == 'pull_request'
         run: |
           mkdir -p android/app
           keytool -genkeypair -v -keystore android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
@@ -108,15 +118,15 @@ jobs:
           echo "storePassword=android" >> android/key.properties
           echo "keyPassword=android" >> android/key.properties
 
-      #10 Build Release APK
+      #11 Build Release APK
       - name: Build Release APK
         run: flutter build apk --release
 
-      #11 Build App Bundle
+      #12 Build App Bundle
       - name: Build App Bundle
         run: flutter build appbundle --release
 
-      #12 Upload Release Artifacts
+      #13 Upload Release Artifacts
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -125,7 +135,7 @@ jobs:
             build/app/outputs/flutter-apk/app-release.apk
             build/app/outputs/bundle/release/app-release.aab
 
-      #13 Extract Version
+      #14 Extract Version
       - name: Extract version from pubspec.yaml
         id: extract_version
         run: |
@@ -136,7 +146,7 @@ jobs:
           echo "FULL_VERSION=$version" >> $GITHUB_ENV
           echo "Extracted version: $version_without_build (full: $version)"
 
-      #14 Check if Tag Exists
+      #15 Check if Tag Exists
       - name: Check if Tag Exists
         id: check_tag
         run: |
@@ -153,7 +163,7 @@ jobs:
             echo "Tag $tag_name does not exist"
           fi
 
-      #15 Modify Version if Tag Exists
+      #16 Modify Version if Tag Exists
       - name: Modify Version if Tag Exists
         if: env.TAG_EXISTS == 'true'
         id: modify_version
@@ -171,7 +181,7 @@ jobs:
             echo "Modified tag v$new_version is available"
           fi
 
-      #16 Create Release
+      #17 Create Release
       - name: Create Release
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.create_release == 'true'
         uses: ncipollo/release-action@v1
