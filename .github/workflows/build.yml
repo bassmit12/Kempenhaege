@@ -26,6 +26,9 @@ jobs:
   build:
     name: Build & Release
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
 
     steps:
       #1 Checkout Repository
@@ -37,10 +40,14 @@ jobs:
       #2 Show Directory Structure (for debugging)
       - name: Show Directory Structure
         run: |
-          echo "Repository root:"
+          echo "Working directory:"
+          pwd
+          echo "App directory structure:"
           ls -la
           echo "Android directory:"
           ls -la android
+          echo "AndroidManifest.xml location:"
+          find android -name "AndroidManifest.xml"
 
       #3 Setup Java
       - name: Set Up Java
@@ -66,7 +73,7 @@ jobs:
             ${{ env.PUB_CACHE }}
             .dart_tool/
             ~/.pub-cache/
-          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          key: ${{ runner.os }}-pub-${{ hashFiles('frontend/**/pubspec.lock') }}
           restore-keys: |
             ${{ runner.os }}-pub-
 
@@ -78,8 +85,8 @@ jobs:
             ~/.gradle/caches
             ~/.gradle/wrapper
             ~/.android/build-cache
-            android/.gradle
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+            frontend/android/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('frontend/**/*.gradle*', 'frontend/**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 
@@ -127,24 +134,32 @@ jobs:
           echo "storePassword=android" >> android/key.properties
           echo "keyPassword=android" >> android/key.properties
 
-      #12 Build Release APK
+      #12 Ensure Flutter is using Android embedding v2
+      - name: Verify Android embedding version
+        run: |
+          echo "Checking for MainActivity.kt..."
+          cat android/app/src/main/kotlin/com/example/ai_scheduling_app/MainActivity.kt
+          echo "Checking AndroidManifest.xml..."
+          cat android/app/src/main/AndroidManifest.xml
+
+      #13 Build Release APK
       - name: Build Release APK
         run: flutter build apk --release
 
-      #13 Build App Bundle
+      #14 Build App Bundle
       - name: Build App Bundle
         run: flutter build appbundle --release
 
-      #14 Upload Release Artifacts
+      #15 Upload Release Artifacts
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Release-APK
           path: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/app/outputs/bundle/release/app-release.aab
+            frontend/build/app/outputs/flutter-apk/app-release.apk
+            frontend/build/app/outputs/bundle/release/app-release.aab
 
-      #15 Extract Version
+      #16 Extract Version
       - name: Extract version from pubspec.yaml
         id: extract_version
         run: |
@@ -155,7 +170,7 @@ jobs:
           echo "FULL_VERSION=$version" >> $GITHUB_ENV
           echo "Extracted version: $version_without_build (full: $version)"
 
-      #16 Check if Tag Exists
+      #17 Check if Tag Exists
       - name: Check if Tag Exists
         id: check_tag
         run: |
@@ -172,7 +187,7 @@ jobs:
             echo "Tag $tag_name does not exist"
           fi
 
-      #17 Modify Version if Tag Exists
+      #18 Modify Version if Tag Exists
       - name: Modify Version if Tag Exists
         if: env.TAG_EXISTS == 'true'
         id: modify_version
@@ -190,12 +205,12 @@ jobs:
             echo "Modified tag v$new_version is available"
           fi
 
-      #18 Create Release
+      #19 Create Release
       - name: Create Release
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.create_release == 'true'
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "build/app/outputs/flutter-apk/app-release.apk,build/app/outputs/bundle/release/app-release.aab"
+          artifacts: "frontend/build/app/outputs/flutter-apk/app-release.apk,frontend/build/app/outputs/bundle/release/app-release.aab"
           tag: v${{ env.VERSION }}
           name: "Kempenhaege Schedule v${{ env.VERSION }}"
           body: |
