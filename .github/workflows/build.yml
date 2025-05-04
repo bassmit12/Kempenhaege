@@ -70,17 +70,19 @@ jobs:
             ~/.gradle/caches
             ~/.gradle/wrapper
             ~/.android/build-cache
-            android/.gradle
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+            frontend/android/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('frontend/**/*.gradle*', 'frontend/**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 
       #6 Install Dependencies
       - name: Install Dependencies
+        working-directory: frontend
         run: flutter pub get
 
       #7 Create Local Properties
       - name: Create Local Properties
+        working-directory: frontend
         run: |
           echo "flutter.sdk=/opt/hostedtoolcache/flutter/stable-3.13.9-x64" > android/local.properties
 
@@ -97,6 +99,7 @@ jobs:
       #9 Setup keystore from secrets
       - name: Setup keystore
         if: steps.check_keystore.outputs.has_keystore == 'true'
+        working-directory: frontend
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
           echo "storeFile=../app/keystore.jks" > android/key.properties
@@ -110,20 +113,23 @@ jobs:
       #10 Use a Debug Key for PR Builds
       - name: Generate debug keystore for PR builds
         if: steps.check_keystore.outputs.has_keystore != 'true' || github.event_name == 'pull_request'
+        working-directory: frontend
         run: |
           mkdir -p android/app
           keytool -genkeypair -v -keystore android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           echo "storeFile=../app/debug.keystore" > android/key.properties
           echo "keyAlias=androiddebugkey" >> android/key.properties
           echo "storePassword=android" >> android/key.properties
-          echo "keyPassword=android" >> android.key.properties
+          echo "keyPassword=android" >> android/key.properties
 
       #11 Build Release APK
       - name: Build Release APK
+        working-directory: frontend
         run: flutter build apk --release
 
       #12 Build App Bundle
       - name: Build App Bundle
+        working-directory: frontend
         run: flutter build appbundle --release
 
       #13 Upload Release Artifacts
@@ -132,12 +138,13 @@ jobs:
         with:
           name: Release-APK
           path: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/app/outputs/bundle/release/app-release.aab
+            frontend/build/app/outputs/flutter-apk/app-release.apk
+            frontend/build/app/outputs/bundle/release/app-release.aab
 
       #14 Extract Version
       - name: Extract version from pubspec.yaml
         id: extract_version
+        working-directory: frontend
         run: |
           version=$(grep '^version: ' pubspec.yaml | cut -d ' ' -f 2 | tr -d '\r')
           # Strip build number part if present (after the +)
@@ -186,7 +193,7 @@ jobs:
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.create_release == 'true'
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "build/app/outputs/flutter-apk/app-release.apk,build/app/outputs/bundle/release/app-release.aab"
+          artifacts: "frontend/build/app/outputs/flutter-apk/app-release.apk,frontend/build/app/outputs/bundle/release/app-release.aab"
           tag: v${{ env.VERSION }}
           name: "Kempenhaege Schedule v${{ env.VERSION }}"
           body: |
