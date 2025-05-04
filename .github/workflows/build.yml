@@ -34,7 +34,15 @@ jobs:
         with:
           fetch-depth: 0 # Fetch all history to properly check tags
 
-      #2 Setup Java
+      #2 Show Directory Structure (for debugging)
+      - name: Show Directory Structure
+        run: |
+          echo "Repository root:"
+          ls -la
+          echo "Frontend directory:"
+          ls -la frontend
+
+      #3 Setup Java
       - name: Set Up Java
         uses: actions/setup-java@v3.12.0
         with:
@@ -42,7 +50,7 @@ jobs:
           java-version: "17"
           cache: gradle # Enable Java/Gradle dependency caching
 
-      #3 Setup Flutter
+      #4 Setup Flutter
       - name: Set Up Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -50,7 +58,7 @@ jobs:
           channel: "stable"
           cache: true # Enable Flutter tool caching
 
-      #4 Cache Pub Dependencies
+      #5 Cache Pub Dependencies
       - name: Cache Pub Dependencies
         uses: actions/cache@v3
         with:
@@ -62,7 +70,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pub-
 
-      #5 Cache Gradle Dependencies
+      #6 Cache Gradle Dependencies
       - name: Cache Gradle Dependencies
         uses: actions/cache@v3
         with:
@@ -70,21 +78,23 @@ jobs:
             ~/.gradle/caches
             ~/.gradle/wrapper
             ~/.android/build-cache
-            android/.gradle
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+            frontend/android/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('frontend/**/*.gradle*', 'frontend/**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      #6 Install Dependencies
-      - name: Install Dependencies
+      #7 Install Flutter Dependencies
+      - name: Install Flutter Dependencies
+        working-directory: frontend
         run: flutter pub get
 
-      #7 Create Local Properties
+      #8 Create Local Properties
       - name: Create Local Properties
+        working-directory: frontend
         run: |
           echo "flutter.sdk=/opt/hostedtoolcache/flutter/stable-3.13.9-x64" > android/local.properties
 
-      #8 Check for keystore secret
+      #9 Check for keystore secret
       - name: Check for keystore secret
         id: check_keystore
         run: |
@@ -94,9 +104,10 @@ jobs:
             echo "has_keystore=false" >> $GITHUB_OUTPUT
           fi
 
-      #9 Setup keystore from secrets
+      #10 Setup keystore from secrets
       - name: Setup keystore
         if: steps.check_keystore.outputs.has_keystore == 'true'
+        working-directory: frontend
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
           echo "storeFile=../app/keystore.jks" > android/key.properties
@@ -107,9 +118,10 @@ jobs:
           # Display the SHA-1 fingerprint for verification
           keytool -list -v -keystore android/app/keystore.jks -alias ${{ secrets.KEY_ALIAS }} -storepass ${{ secrets.STORE_PASSWORD }} -keypass ${{ secrets.KEY_PASSWORD }} | grep "SHA1:"
 
-      #10 Use a Debug Key for PR Builds
+      #11 Use a Debug Key for PR Builds
       - name: Generate debug keystore for PR builds
         if: steps.check_keystore.outputs.has_keystore != 'true' || github.event_name == 'pull_request'
+        working-directory: frontend
         run: |
           mkdir -p android/app
           keytool -genkeypair -v -keystore android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
@@ -118,26 +130,29 @@ jobs:
           echo "storePassword=android" >> android/key.properties
           echo "keyPassword=android" >> android/key.properties
 
-      #11 Build Release APK
+      #12 Build Release APK
       - name: Build Release APK
+        working-directory: frontend
         run: flutter build apk --release
 
-      #12 Build App Bundle
+      #13 Build App Bundle
       - name: Build App Bundle
+        working-directory: frontend
         run: flutter build appbundle --release
 
-      #13 Upload Release Artifacts
+      #14 Upload Release Artifacts
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Release-APK
           path: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/app/outputs/bundle/release/app-release.aab
+            frontend/build/app/outputs/flutter-apk/app-release.apk
+            frontend/build/app/outputs/bundle/release/app-release.aab
 
-      #14 Extract Version
+      #15 Extract Version
       - name: Extract version from pubspec.yaml
         id: extract_version
+        working-directory: frontend
         run: |
           version=$(grep '^version: ' pubspec.yaml | cut -d ' ' -f 2 | tr -d '\r')
           # Strip build number part if present (after the +)
@@ -146,7 +161,7 @@ jobs:
           echo "FULL_VERSION=$version" >> $GITHUB_ENV
           echo "Extracted version: $version_without_build (full: $version)"
 
-      #15 Check if Tag Exists
+      #16 Check if Tag Exists
       - name: Check if Tag Exists
         id: check_tag
         run: |
@@ -163,7 +178,7 @@ jobs:
             echo "Tag $tag_name does not exist"
           fi
 
-      #16 Modify Version if Tag Exists
+      #17 Modify Version if Tag Exists
       - name: Modify Version if Tag Exists
         if: env.TAG_EXISTS == 'true'
         id: modify_version
@@ -181,12 +196,12 @@ jobs:
             echo "Modified tag v$new_version is available"
           fi
 
-      #17 Create Release
+      #18 Create Release
       - name: Create Release
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.create_release == 'true'
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "build/app/outputs/flutter-apk/app-release.apk,build/app/outputs/bundle/release/app-release.aab"
+          artifacts: "frontend/build/app/outputs/flutter-apk/app-release.apk,frontend/build/app/outputs/bundle/release/app-release.aab"
           tag: v${{ env.VERSION }}
           name: "Kempenhaege Schedule v${{ env.VERSION }}"
           body: |
