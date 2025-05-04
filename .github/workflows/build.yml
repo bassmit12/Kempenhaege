@@ -46,7 +46,7 @@ jobs:
       - name: Set Up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.16.0"
+          flutter-version: "3.13.9"
           channel: "stable"
           cache: true # Enable Flutter tool caching
 
@@ -82,7 +82,7 @@ jobs:
       #7 Create Local Properties
       - name: Create Local Properties
         run: |
-          echo "flutter.sdk=/opt/hostedtoolcache/flutter/stable-3.16.0-x64" > android/local.properties
+          echo "flutter.sdk=/opt/hostedtoolcache/flutter/stable-3.13.9-x64" > android/local.properties
 
       #8 Check for keystore secret
       - name: Check for keystore secret
@@ -116,7 +116,7 @@ jobs:
           echo "storeFile=../app/debug.keystore" > android/key.properties
           echo "keyAlias=androiddebugkey" >> android/key.properties
           echo "storePassword=android" >> android/key.properties
-          echo "keyPassword=android" >> android/key.properties
+          echo "keyPassword=android" >> android.key.properties
 
       #11 Build Release APK
       - name: Build Release APK
