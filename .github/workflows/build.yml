@@ -1,0 +1,196 @@
+name: "Build and Release"
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+  push:
+    branches:
+      - dev
+      - main
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: "Create a release"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+  packages: write
+  actions: write
+
+jobs:
+  build:
+    name: Build & Release
+    runs-on: ubuntu-latest
+
+    steps:
+      #1 Checkout Repository
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Fetch all history to properly check tags
+
+      #2 Setup Java
+      - name: Set Up Java
+        uses: actions/setup-java@v3.12.0
+        with:
+          distribution: "temurin"
+          java-version: "17"
+          cache: gradle # Enable Java/Gradle dependency caching
+
+      #3 Setup Flutter
+      - name: Set Up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.19.0"
+          channel: "stable"
+          cache: true # Enable Flutter tool caching
+
+      #4 Cache Pub Dependencies
+      - name: Cache Pub Dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ env.PUB_CACHE }}
+            .dart_tool/
+            ~/.pub-cache/
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
+      #5 Cache Gradle Dependencies
+      - name: Cache Gradle Dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.android/build-cache
+            android/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      #6 Install Dependencies
+      - name: Install Dependencies
+        run: flutter pub get
+
+      #7 Create Local Properties
+      - name: Create Local Properties
+        run: |
+          echo "flutter.sdk=/opt/hostedtoolcache/flutter/stable-3.19.0-x64" > android/local.properties
+
+      #8 Setup keystore from secrets (if available)
+      - name: Setup keystore
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
+          echo "storeFile=../app/keystore.jks" > android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          echo "storePassword=${{ secrets.STORE_PASSWORD }}" >> android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+
+          # Display the SHA-1 fingerprint for verification
+          keytool -list -v -keystore android/app/keystore.jks -alias ${{ secrets.KEY_ALIAS }} -storepass ${{ secrets.STORE_PASSWORD }} -keypass ${{ secrets.KEY_PASSWORD }} | grep "SHA1:"
+
+      #9 Use a Debug Key for PR Builds
+      - name: Generate debug keystore for PR builds
+        if: ${{ github.event_name == 'pull_request' || secrets.KEYSTORE_BASE64 == '' }}
+        run: |
+          mkdir -p android/app
+          keytool -genkeypair -v -keystore android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          echo "storeFile=../app/debug.keystore" > android/key.properties
+          echo "keyAlias=androiddebugkey" >> android/key.properties
+          echo "storePassword=android" >> android/key.properties
+          echo "keyPassword=android" >> android/key.properties
+
+      #10 Build Release APK
+      - name: Build Release APK
+        run: flutter build apk --release
+
+      #11 Build App Bundle
+      - name: Build App Bundle
+        run: flutter build appbundle --release
+
+      #12 Upload Release Artifacts
+      - name: Upload Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Release-APK
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+
+      #13 Extract Version
+      - name: Extract version from pubspec.yaml
+        id: extract_version
+        run: |
+          version=$(grep '^version: ' pubspec.yaml | cut -d ' ' -f 2 | tr -d '\r')
+          # Strip build number part if present (after the +)
+          version_without_build=$(echo $version | cut -d '+' -f 1)
+          echo "VERSION=$version_without_build" >> $GITHUB_ENV
+          echo "FULL_VERSION=$version" >> $GITHUB_ENV
+          echo "Extracted version: $version_without_build (full: $version)"
+
+      #14 Check if Tag Exists
+      - name: Check if Tag Exists
+        id: check_tag
+        run: |
+          # Fetch all tags
+          git fetch --tags
+
+          # Check if tag exists
+          tag_name="v${{ env.VERSION }}"
+          if git tag -l "$tag_name" | grep -q "$tag_name"; then
+            echo "TAG_EXISTS=true" >> $GITHUB_ENV
+            echo "Tag $tag_name already exists"
+          else
+            echo "TAG_EXISTS=false" >> $GITHUB_ENV
+            echo "Tag $tag_name does not exist"
+          fi
+
+      #15 Modify Version if Tag Exists
+      - name: Modify Version if Tag Exists
+        if: env.TAG_EXISTS == 'true'
+        id: modify_version
+        run: |
+          original_version="${{ env.VERSION }}"
+          new_version="${original_version}-build-${{ github.run_number }}"
+          echo "Modified version from $original_version to $new_version"
+          echo "VERSION=$new_version" >> $GITHUB_ENV
+
+          # Double-check that the new tag doesn't exist
+          if git tag -l "v$new_version" | grep -q "v$new_version"; then
+            echo "Error: Modified tag v$new_version also exists!"
+            exit 1
+          else
+            echo "Modified tag v$new_version is available"
+          fi
+
+      #16 Create Release
+      - name: Create Release
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.create_release == 'true'
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "build/app/outputs/flutter-apk/app-release.apk,build/app/outputs/bundle/release/app-release.aab"
+          tag: v${{ env.VERSION }}
+          name: "Kempenhaege Schedule v${{ env.VERSION }}"
+          body: |
+            Release of Kempenhaege Schedule version ${{ env.VERSION }}
+
+            ### What's New
+            - Latest features and improvements
+            - Bug fixes and performance enhancements
+
+            ### APK File
+            Download the APK file to install directly on Android devices
+
+            ### App Bundle
+            The AAB file is for Play Store submission
+          draft: false
+          prerelease: ${{ github.ref != 'refs/heads/main' }}
+          token: ${{ secrets.GITHUB_TOKEN }}
