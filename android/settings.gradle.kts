@@ -1,10 +1,17 @@
 pluginManagement {
+    // Safer property loading with fallback
     val flutterSdkPath = run {
         val properties = java.util.Properties()
-        file("local.properties").inputStream().use { properties.load(it) }
+        val localPropertiesFile = file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localPropertiesFile.inputStream().use { properties.load(it) }
+        }
         val flutterSdkPath = properties.getProperty("flutter.sdk")
-        require(flutterSdkPath != null) { "flutter.sdk not set in local.properties" }
-        flutterSdkPath
+        if (flutterSdkPath == null) {
+            System.getenv("FLUTTER_ROOT") ?: throw GradleException("flutter.sdk not set in local.properties and FLUTTER_ROOT env var is not set")
+        } else {
+            flutterSdkPath
+        }
     }
 
     includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
@@ -23,3 +30,8 @@ plugins {
 }
 
 include(":app")
+
+// Force Flutter to recognize v2 embedding
+gradle.beforeProject {
+    project.extensions.extraProperties["flutter.embedding.version"] = "2"
+}

@@ -18,7 +18,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.example.ai_scheduling_app"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = flutter.compileSdkVersion ?: 34 // Provide a fallback version
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -32,13 +32,18 @@ android {
 
     defaultConfig {
         applicationId = "com.example.ai_scheduling_app"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        minSdk = flutter.minSdkVersion ?: 21 // Provide a fallback version
+        targetSdk = flutter.targetSdkVersion ?: 34 // Provide a fallback version
+        versionCode = flutter.versionCode ?: 1
+        versionName = flutter.versionName ?: "1.0.0"
+        
+        // Force Flutter to use the v2 embedding
+        manifestPlaceholders["flutterEmbedding"] = "2"
     }
 
     signingConfigs {
+        // Don't create a debug config manually, it already exists
+        
         if (keystorePropertiesFile.exists()) {
             create("release") {
                 keyAlias = keystoreProperties["keyAlias"] as String
@@ -50,6 +55,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Use the existing debug signing config
+            signingConfig = signingConfigs.getByName("debug")
+        }
+        
         release {
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
