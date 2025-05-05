@@ -1,24 +1,29 @@
 package com.example.ai_scheduling_app
 
+import android.app.Application
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.embedding.engine.dart.DartExecutor
 import io.flutter.plugins.GeneratedPluginRegistrant
 
-class FlutterApplication : android.app.Application() {
+class FlutterApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         
-        // Pre-warm the Flutter engine
+        // Create and cache a FlutterEngine
         val flutterEngine = FlutterEngine(this)
+        
+        // Start executing Dart code in the FlutterEngine
         flutterEngine.dartExecutor.executeDartEntrypoint(
             DartExecutor.DartEntrypoint.createDefault()
         )
         
-        // Cache the Flutter engine to be used by FlutterActivity
-        FlutterEngineCache.getInstance().put("my_engine_id", flutterEngine)
-        
-        // Register all plugins
+        // Register plugins
         GeneratedPluginRegistrant.registerWith(flutterEngine)
+        
+        // Cache the pre-warmed FlutterEngine
+        FlutterEngineCache
+            .getInstance()
+            .put("default_engine_id", flutterEngine)
     }
 }
