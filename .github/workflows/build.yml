@@ -73,7 +73,7 @@ jobs:
         id: setup_keystore
         run: |
           mkdir -p ${{ env.ANDROID_DIR }}/app
-          
+
           # Check if KEYSTORE_BASE64 secret exists
           if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
             echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > ${{ env.ANDROID_DIR }}/app/keystore.jks
@@ -91,19 +91,24 @@ jobs:
             echo "keyPassword=android" >> ${{ env.ANDROID_DIR }}/key.properties
             echo "Using debug keystore"
           fi
-          
+
           # Verify key.properties file
           echo "key.properties content:"
           cat ${{ env.ANDROID_DIR }}/key.properties
 
+      - name: Add stub root AndroidManifest
+        working-directory: ${{ env.WORKDIR }}
+        run: |
+          cp android/app/src/main/AndroidManifest.xml android/AndroidManifest.xml
+
       - name: Build Debug APK
         working-directory: ${{ env.WORKDIR }}
         run: flutter build apk --debug --verbose
-        
+
       - name: Build Release APK
         working-directory: ${{ env.WORKDIR }}
         run: flutter build apk --release --verbose
-        
+
       - name: Build App Bundle
         working-directory: ${{ env.WORKDIR }}
         run: flutter build appbundle --release
@@ -115,7 +120,7 @@ jobs:
           path: |
             ${{ env.WORKDIR }}/build/app/outputs/flutter-apk/app-release.apk
             ${{ env.WORKDIR }}/build/app/outputs/bundle/release/app-release.aab
-            
+
       - name: Extract Version
         id: version
         working-directory: ${{ env.WORKDIR }}
@@ -125,7 +130,7 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
           echo "Extracted version: $VERSION_NAME (full: $VERSION)"
-          
+
       - name: Create GitHub Release
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.create_release == 'true'
         uses: ncipollo/release-action@v1.13.0
@@ -135,14 +140,14 @@ jobs:
           name: "Kempenhaege Schedule v${{ env.VERSION_NAME }}"
           body: |
             Release of Kempenhaege Schedule version ${{ env.VERSION_NAME }}
-            
+
             ### What's New
             - Latest features and improvements
             - Bug fixes and performance enhancements
-            
+
             ### APK File
             Download the APK file to install directly on Android devices
-            
+
             ### App Bundle
             The AAB file is for Play Store submission
           draft: false
