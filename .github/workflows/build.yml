@@ -28,248 +28,121 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      #1 Checkout Repository
       - name: Checkout Repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0 # Fetch all history to properly check tags
+          fetch-depth: 0
 
-      #2 Show Directory Structure (for debugging)
-      - name: Show Directory Structure
-        run: |
-          echo "Current directory: $(pwd)"
-          echo "Repository root contents:"
-          ls -la
-          if [ -d "frontend" ]; then
-            echo "Frontend directory exists, contents:"
-            ls -la frontend
-            WORKDIR="frontend"
-          else
-            echo "No frontend directory found, assuming app is at repository root"
-            WORKDIR="."
-          fi
-          echo "WORKDIR=$WORKDIR" >> $GITHUB_ENV
-
-      #3 Setup Java
       - name: Set Up Java
-        uses: actions/setup-java@v3.12.0
+        uses: actions/setup-java@v3
         with:
           distribution: "temurin"
           java-version: "17"
-          cache: gradle # Enable Java/Gradle dependency caching
+          cache: gradle
 
-      #4 Setup Flutter
       - name: Set Up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.13.9"
+          flutter-version: "3.19.3"
           channel: "stable"
-          cache: true # Enable Flutter tool caching
+          cache: true
 
-      #5 Determine Android and Flutter Paths
-      - name: Locate Android and Flutter Structure
+      - name: Set Working Directory
         run: |
-          if [ -d "${{ env.WORKDIR }}/android" ]; then
-            echo "Android directory found in ${{ env.WORKDIR }}/android"
-            echo "ANDROID_DIR=${{ env.WORKDIR }}/android" >> $GITHUB_ENV
+          if [ -d "frontend" ]; then
+            echo "WORKDIR=frontend" >> $GITHUB_ENV
+            echo "ANDROID_DIR=frontend/android" >> $GITHUB_ENV
           else
-            echo "No Android directory found at ${{ env.WORKDIR }}/android"
-            echo "Looking for Android directory elsewhere..."
-            ANDROID_PATH=$(find . -type d -name "android" | head -1)
-            if [ -n "$ANDROID_PATH" ]; then
-              echo "Found Android directory at: $ANDROID_PATH"
-              echo "ANDROID_DIR=$ANDROID_PATH" >> $GITHUB_ENV
-              # Determine the app directory by going up one level from android
-              APP_DIR=$(dirname "$ANDROID_PATH")
-              echo "Setting WORKDIR to $APP_DIR"
-              echo "WORKDIR=$APP_DIR" >> $GITHUB_ENV
-            else
-              echo "ERROR: Could not find Android directory!"
-              exit 1
-            fi
+            echo "WORKDIR=." >> $GITHUB_ENV
+            echo "ANDROID_DIR=android" >> $GITHUB_ENV
           fi
-          
-          echo "Looking for AndroidManifest.xml files:"
-          find . -name "AndroidManifest.xml"
+          echo "Working directory set to: ${{ env.WORKDIR }}"
+          echo "Android directory set to: ${{ env.ANDROID_DIR }}"
 
-      #6 Cache Pub Dependencies
-      - name: Cache Pub Dependencies
-        uses: actions/cache@v3
-        with:
-          path: |
-            ${{ env.PUB_CACHE }}
-            .dart_tool/
-            ~/.pub-cache/
-          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pub-
-
-      #7 Cache Gradle Dependencies
-      - name: Cache Gradle Dependencies
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            ~/.android/build-cache
-            ${{ env.ANDROID_DIR }}/.gradle
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      #8 Install Flutter Dependencies
       - name: Install Flutter Dependencies
         working-directory: ${{ env.WORKDIR }}
         run: flutter pub get
 
-      #9 Create Local Properties
-      - name: Create Local Properties
+      - name: Setup Local Properties
         run: |
-          echo "flutter.sdk=/opt/hostedtoolcache/flutter/stable-3.13.9-x64" > ${{ env.ANDROID_DIR }}/local.properties
+          mkdir -p ${{ env.ANDROID_DIR }}
+          echo "flutter.sdk=$FLUTTER_HOME" > ${{ env.ANDROID_DIR }}/local.properties
+          echo "Created local.properties in ${{ env.ANDROID_DIR }}"
 
-      #10 Check for keystore secret
-      - name: Check for keystore secret
-        id: check_keystore
-        run: |
-          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "has_keystore=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_keystore=false" >> $GITHUB_OUTPUT
-          fi
-
-      #11 Setup keystore from secrets
-      - name: Setup keystore
-        if: steps.check_keystore.outputs.has_keystore == 'true'
+      - name: Setup Keystore
+        id: setup_keystore
         run: |
           mkdir -p ${{ env.ANDROID_DIR }}/app
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > ${{ env.ANDROID_DIR }}/app/keystore.jks
-          echo "storeFile=../app/keystore.jks" > ${{ env.ANDROID_DIR }}/key.properties
-          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> ${{ env.ANDROID_DIR }}/key.properties
-          echo "storePassword=${{ secrets.STORE_PASSWORD }}" >> ${{ env.ANDROID_DIR }}/key.properties
-          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> ${{ env.ANDROID_DIR }}/key.properties
-
-          # Display the SHA-1 fingerprint for verification
-          keytool -list -v -keystore ${{ env.ANDROID_DIR }}/app/keystore.jks -alias ${{ secrets.KEY_ALIAS }} -storepass ${{ secrets.STORE_PASSWORD }} -keypass ${{ secrets.KEY_PASSWORD }} | grep "SHA1:"
-
-      #12 Use a Debug Key for PR Builds
-      - name: Generate debug keystore for PR builds
-        if: steps.check_keystore.outputs.has_keystore != 'true' || github.event_name == 'pull_request'
-        run: |
-          mkdir -p ${{ env.ANDROID_DIR }}/app
-          keytool -genkeypair -v -keystore ${{ env.ANDROID_DIR }}/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-          echo "storeFile=../app/debug.keystore" > ${{ env.ANDROID_DIR }}/key.properties
-          echo "keyAlias=androiddebugkey" >> ${{ env.ANDROID_DIR }}/key.properties
-          echo "storePassword=android" >> ${{ env.ANDROID_DIR }}/key.properties
-          echo "keyPassword=android" >> ${{ env.ANDROID_DIR }}/key.properties
-
-      #13 Locate and Check Android Manifest
-      - name: Check Android Manifest
-        run: |
-          echo "AndroidManifest.xml files found:"
-          find ${{ env.ANDROID_DIR }} -name "AndroidManifest.xml"
           
-          MAIN_MANIFEST="${{ env.ANDROID_DIR }}/app/src/main/AndroidManifest.xml"
-          if [ -f "$MAIN_MANIFEST" ]; then
-            echo "Main AndroidManifest.xml found at: $MAIN_MANIFEST"
-            echo "Contents:"
-            cat "$MAIN_MANIFEST"
-            
-            # Check if it includes the Android embedding v2 metadata
-            if grep -q "flutterEmbedding" "$MAIN_MANIFEST"; then
-              echo "Android embedding v2 metadata found in manifest"
-            else
-              echo "WARNING: Android embedding v2 metadata not found in manifest"
-            fi
+          # Check if KEYSTORE_BASE64 secret exists
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > ${{ env.ANDROID_DIR }}/app/keystore.jks
+            echo "storeFile=../app/keystore.jks" > ${{ env.ANDROID_DIR }}/key.properties
+            echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> ${{ env.ANDROID_DIR }}/key.properties
+            echo "storePassword=${{ secrets.STORE_PASSWORD }}" >> ${{ env.ANDROID_DIR }}/key.properties
+            echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> ${{ env.ANDROID_DIR }}/key.properties
+            echo "Using production keystore"
           else
-            echo "ERROR: Main AndroidManifest.xml not found at expected location: $MAIN_MANIFEST"
-            echo "Searching for AndroidManifest.xml files:"
-            find . -name "AndroidManifest.xml"
+            # Generate debug keystore for testing
+            keytool -genkeypair -v -keystore ${{ env.ANDROID_DIR }}/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+            echo "storeFile=../app/debug.keystore" > ${{ env.ANDROID_DIR }}/key.properties
+            echo "keyAlias=androiddebugkey" >> ${{ env.ANDROID_DIR }}/key.properties
+            echo "storePassword=android" >> ${{ env.ANDROID_DIR }}/key.properties
+            echo "keyPassword=android" >> ${{ env.ANDROID_DIR }}/key.properties
+            echo "Using debug keystore"
           fi
+          
+          # Verify key.properties file
+          echo "key.properties content:"
+          cat ${{ env.ANDROID_DIR }}/key.properties
 
-      #14 Build Release APK
+      - name: Build Debug APK
+        working-directory: ${{ env.WORKDIR }}
+        run: flutter build apk --debug --verbose
+        
       - name: Build Release APK
         working-directory: ${{ env.WORKDIR }}
         run: flutter build apk --release --verbose
-
-      #15 Build App Bundle
+        
       - name: Build App Bundle
         working-directory: ${{ env.WORKDIR }}
         run: flutter build appbundle --release
 
-      #16 Upload Release Artifacts
-      - name: Upload Release Artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v3
         with:
-          name: Release-APK
+          name: app-builds
           path: |
             ${{ env.WORKDIR }}/build/app/outputs/flutter-apk/app-release.apk
             ${{ env.WORKDIR }}/build/app/outputs/bundle/release/app-release.aab
-
-      #17 Extract Version
-      - name: Extract version from pubspec.yaml
-        id: extract_version
+            
+      - name: Extract Version
+        id: version
         working-directory: ${{ env.WORKDIR }}
         run: |
-          version=$(grep '^version: ' pubspec.yaml | cut -d ' ' -f 2 | tr -d '\r')
-          # Strip build number part if present (after the +)
-          version_without_build=$(echo $version | cut -d '+' -f 1)
-          echo "VERSION=$version_without_build" >> $GITHUB_ENV
-          echo "FULL_VERSION=$version" >> $GITHUB_ENV
-          echo "Extracted version: $version_without_build (full: $version)"
-
-      #18 Check if Tag Exists
-      - name: Check if Tag Exists
-        id: check_tag
-        run: |
-          # Fetch all tags
-          git fetch --tags
-
-          # Check if tag exists
-          tag_name="v${{ env.VERSION }}"
-          if git tag -l "$tag_name" | grep -q "$tag_name"; then
-            echo "TAG_EXISTS=true" >> $GITHUB_ENV
-            echo "Tag $tag_name already exists"
-          else
-            echo "TAG_EXISTS=false" >> $GITHUB_ENV
-            echo "Tag $tag_name does not exist"
-          fi
-
-      #19 Modify Version if Tag Exists
-      - name: Modify Version if Tag Exists
-        if: env.TAG_EXISTS == 'true'
-        id: modify_version
-        run: |
-          original_version="${{ env.VERSION }}"
-          new_version="${original_version}-build-${{ github.run_number }}"
-          echo "Modified version from $original_version to $new_version"
-          echo "VERSION=$new_version" >> $GITHUB_ENV
-
-          # Double-check that the new tag doesn't exist
-          if git tag -l "v$new_version" | grep -q "v$new_version"; then
-            echo "Error: Modified tag v$new_version also exists!"
-            exit 1
-          else
-            echo "Modified tag v$new_version is available"
-          fi
-
-      #20 Create Release
-      - name: Create Release
+          VERSION=$(grep '^version:' pubspec.yaml | cut -d' ' -f2 | tr -d '\r')
+          VERSION_NAME=$(echo $VERSION | cut -d'+' -f1)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          echo "Extracted version: $VERSION_NAME (full: $VERSION)"
+          
+      - name: Create GitHub Release
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.create_release == 'true'
         uses: ncipollo/release-action@v1
         with:
           artifacts: "${{ env.WORKDIR }}/build/app/outputs/flutter-apk/app-release.apk,${{ env.WORKDIR }}/build/app/outputs/bundle/release/app-release.aab"
-          tag: v${{ env.VERSION }}
-          name: "Kempenhaege Schedule v${{ env.VERSION }}"
+          tag: v${{ env.VERSION_NAME }}
+          name: "Kempenhaege Schedule v${{ env.VERSION_NAME }}"
           body: |
-            Release of Kempenhaege Schedule version ${{ env.VERSION }}
-
+            Release of Kempenhaege Schedule version ${{ env.VERSION_NAME }}
+            
             ### What's New
             - Latest features and improvements
             - Bug fixes and performance enhancements
-
+            
             ### APK File
             Download the APK file to install directly on Android devices
-
+            
             ### App Bundle
             The AAB file is for Play Store submission
           draft: false
