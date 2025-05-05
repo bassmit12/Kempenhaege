@@ -54,7 +54,7 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
   DateTime? _selectedDay;
 
   final Map<String, Widget Function(BuildContext, DateTime, DateTime?)>
-  _viewBuilders = {};
+      _viewBuilders = {};
 
   @override
   void initState() {
@@ -125,8 +125,8 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
             child: _viewBuilders[_currentView == ViewType.month
                 ? 'Month'
                 : _currentView == ViewType.week
-                ? 'Week'
-                : 'Day']!(context, _focusedDay, _selectedDay),
+                    ? 'Week'
+                    : 'Day']!(context, _focusedDay, _selectedDay),
           ),
         ],
       ),
@@ -227,7 +227,6 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
                     );
                   },
                 ),
-
                 const SizedBox(height: 8),
                 Padding(
                   padding: const EdgeInsets.symmetric(
@@ -239,15 +238,13 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color:
-                          isDarkMode
-                              ? ThemeProvider.notionGray
-                              : const Color(0xFF9B9A97),
+                      color: isDarkMode
+                          ? ThemeProvider.notionGray
+                          : const Color(0xFF9B9A97),
                       letterSpacing: 0.5,
                     ),
                   ),
                 ),
-
                 _buildNotionMenuItem(
                   context,
                   icon: Icons.bookmark_border,
@@ -362,12 +359,9 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
         decoration: BoxDecoration(
-          color:
-              isSelected
-                  ? (isDarkMode
-                      ? const Color(0xFF2D2D2D)
-                      : const Color(0xFFF1F1F0))
-                  : Colors.transparent,
+          color: isSelected
+              ? (isDarkMode ? const Color(0xFF2D2D2D) : const Color(0xFFF1F1F0))
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(3),
         ),
         child: Row(
@@ -375,12 +369,11 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
             Icon(
               icon,
               size: 18,
-              color:
-                  isSelected
-                      ? (isDarkMode ? Colors.white : ThemeProvider.notionBlack)
-                      : (isDarkMode
-                          ? ThemeProvider.notionGray
-                          : const Color(0xFF9B9A97)),
+              color: isSelected
+                  ? (isDarkMode ? Colors.white : ThemeProvider.notionBlack)
+                  : (isDarkMode
+                      ? ThemeProvider.notionGray
+                      : const Color(0xFF9B9A97)),
             ),
             const SizedBox(width: 10),
             Text(
@@ -388,14 +381,11 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
-                color:
-                    isSelected
-                        ? (isDarkMode
-                            ? Colors.white
-                            : ThemeProvider.notionBlack)
-                        : (isDarkMode
-                            ? ThemeProvider.notionGray
-                            : const Color(0xFF37352F)),
+                color: isSelected
+                    ? (isDarkMode ? Colors.white : ThemeProvider.notionBlack)
+                    : (isDarkMode
+                        ? ThemeProvider.notionGray
+                        : const Color(0xFF37352F)),
               ),
             ),
           ],
@@ -452,6 +442,21 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
     DateTime focusedDay,
     DateTime? selectedDay,
   ) {
+    // Get events for each day to show markers
+    final eventManager = Provider.of<EventManager>(context);
+
+    // This function will check if a day has any events
+    bool hasEventsOnDay(DateTime day) {
+      final events = eventManager.getEventsForDay(day);
+      return events.isNotEmpty;
+    }
+
+    // Event loader function for table calendar
+    List<dynamic> getEventsForDay(DateTime day) {
+      final events = eventManager.getEventsForDay(day);
+      return events;
+    }
+
     return Container(
       padding: const EdgeInsets.all(16.0),
       child: TableCalendar(
@@ -466,6 +471,8 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
           setState(() {
             _selectedDay = selectedDay;
             _focusedDay = focusedDay;
+            // Switch to day view when a day is selected
+            _currentView = ViewType.day;
           });
         },
         onPageChanged: (focusedDay) {
@@ -473,8 +480,17 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
             _focusedDay = focusedDay;
           });
         },
+        // Add event loader to display markers on days with events
+        eventLoader: getEventsForDay,
         calendarStyle: CalendarStyle(
           markersMaxCount: 3,
+          markerDecoration: const BoxDecoration(
+            color: ThemeProvider.notionBlue,
+            shape: BoxShape.circle,
+          ),
+          markerSize: 7.0,
+          markersAlignment: Alignment.bottomCenter,
+          markerMargin: const EdgeInsets.only(top: 1.0),
           isTodayHighlighted: true,
           todayDecoration: BoxDecoration(
             color: ThemeProvider.notionFaintBlue,
@@ -709,47 +725,45 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
           itemBuilder: (context, index) {
             final time = timeSlots[index];
             final timeFormat = DateFormat('h:mm a');
-            final isCurrentHour =
-                time.hour == DateTime.now().hour &&
+            final isCurrentHour = time.hour == DateTime.now().hour &&
                 time.day == DateTime.now().day &&
                 time.month == DateTime.now().month;
 
             // Find events that overlap with this time slot
-            final eventsAtThisHour =
-                eventsForDay.where((event) {
-                  // Convert event times to same-day comparison to handle multi-day events
-                  final timeHour = time.hour;
-                  final eventStartHour = event.startTime.hour;
-                  final eventEndHour = event.endTime.hour;
+            final eventsAtThisHour = eventsForDay.where((event) {
+              // Convert event times to same-day comparison to handle multi-day events
+              final timeHour = time.hour;
+              final eventStartHour = event.startTime.hour;
+              final eventEndHour = event.endTime.hour;
 
-                  // Special case for events ending at midnight (0:00)
-                  final eventEndHourAdjusted =
-                      (event.endTime.hour == 0 && event.endTime.minute == 0)
-                          ? 24 // Represent midnight as hour 24 for comparison
-                          : event.endTime.hour;
+              // Special case for events ending at midnight (0:00)
+              final eventEndHourAdjusted =
+                  (event.endTime.hour == 0 && event.endTime.minute == 0)
+                      ? 24 // Represent midnight as hour 24 for comparison
+                      : event.endTime.hour;
 
-                  // For same-day events
-                  if (isSameDay(event.startTime, event.endTime)) {
-                    // Check if this timeslot falls within the event hours
-                    return timeHour >= eventStartHour &&
-                        timeHour < eventEndHourAdjusted;
-                  }
+              // For same-day events
+              if (isSameDay(event.startTime, event.endTime)) {
+                // Check if this timeslot falls within the event hours
+                return timeHour >= eventStartHour &&
+                    timeHour < eventEndHourAdjusted;
+              }
 
-                  // For multi-day events
-                  if (isSameDay(time, event.startTime)) {
-                    // First day of the event - show from start time onwards
-                    return timeHour >= eventStartHour;
-                  } else if (isSameDay(time, event.endTime)) {
-                    // Last day of the event - show until end time
-                    return timeHour < eventEndHourAdjusted;
-                  } else if (time.isAfter(event.startTime) &&
-                      time.isBefore(event.endTime)) {
-                    // Middle day of multi-day event - show all hours
-                    return true;
-                  }
+              // For multi-day events
+              if (isSameDay(time, event.startTime)) {
+                // First day of the event - show from start time onwards
+                return timeHour >= eventStartHour;
+              } else if (isSameDay(time, event.endTime)) {
+                // Last day of the event - show until end time
+                return timeHour < eventEndHourAdjusted;
+              } else if (time.isAfter(event.startTime) &&
+                  time.isBefore(event.endTime)) {
+                // Middle day of multi-day event - show all hours
+                return true;
+              }
 
-                  return false;
-                }).toList();
+              return false;
+            }).toList();
 
             return Container(
               margin: const EdgeInsets.only(bottom: 8.0),
@@ -757,10 +771,9 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
                 color: Theme.of(context).cardTheme.color,
                 borderRadius: BorderRadius.circular(3),
                 border: Border.all(
-                  color:
-                      isCurrentHour
-                          ? ThemeProvider.notionBlue
-                          : Theme.of(context).dividerTheme.color!,
+                  color: isCurrentHour
+                      ? ThemeProvider.notionBlue
+                      : Theme.of(context).dividerTheme.color!,
                   width: 1,
                 ),
               ),
@@ -790,181 +803,164 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
                         child: Text(
                           timeFormat.format(time),
                           style: TextStyle(
-                            color:
-                                isCurrentHour
-                                    ? ThemeProvider.notionBlue
-                                    : ThemeProvider.notionGray,
-                            fontWeight:
-                                isCurrentHour
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
+                            color: isCurrentHour
+                                ? ThemeProvider.notionBlue
+                                : ThemeProvider.notionGray,
+                            fontWeight: isCurrentHour
+                                ? FontWeight.w600
+                                : FontWeight.normal,
                             fontSize: 14,
                           ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child:
-                            eventsAtThisHour.isEmpty
-                                ? Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 8,
-                                    horizontal: 12,
+                        child: eventsAtThisHour.isEmpty
+                            ? Container(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                  horizontal: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isCurrentHour
+                                      ? ThemeProvider.notionFaintBlue
+                                          .withOpacity(0.3)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(3),
+                                  border: Border.all(
+                                    color: isCurrentHour
+                                        ? ThemeProvider.notionBlue
+                                            .withOpacity(0.3)
+                                        : Colors.transparent,
+                                    width: 1,
                                   ),
-                                  decoration: BoxDecoration(
-                                    color:
-                                        isCurrentHour
-                                            ? ThemeProvider.notionFaintBlue
-                                                .withOpacity(0.3)
-                                            : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(3),
-                                    border: Border.all(
-                                      color:
-                                          isCurrentHour
-                                              ? ThemeProvider.notionBlue
-                                                  .withOpacity(0.3)
-                                              : Colors.transparent,
-                                      width: 1,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.drag_indicator,
+                                      size: 16,
+                                      color: Theme.of(
+                                        context,
+                                      ).iconTheme.color?.withOpacity(0.5),
                                     ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.drag_indicator,
-                                        size: 16,
-                                        color: Theme.of(
-                                          context,
-                                        ).iconTheme.color?.withOpacity(0.5),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Click to add an event',
+                                      style: TextStyle(
+                                        color: ThemeProvider.notionGray,
+                                        fontStyle: FontStyle.italic,
                                       ),
-                                      const SizedBox(width: 8),
-                                      const Text(
-                                        'Click to add an event',
-                                        style: TextStyle(
-                                          color: ThemeProvider.notionGray,
-                                          fontStyle: FontStyle.italic,
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: eventsAtThisHour.map((event) {
+                                  final isDarkMode =
+                                      Theme.of(context).brightness ==
+                                          Brightness.dark;
+
+                                  return GestureDetector(
+                                    onTap: () {
+                                      // Open the event editing form
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => EventFormScreen(
+                                            event: event,
+                                          ),
+                                        ),
+                                      ).then((updatedEvent) {
+                                        // If the event was updated
+                                        if (updatedEvent != null) {
+                                          eventManager.updateEvent(
+                                            updatedEvent,
+                                          );
+                                        }
+                                      });
+                                    },
+                                    child: Container(
+                                      margin: const EdgeInsets.only(
+                                        bottom: 4,
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 8,
+                                        horizontal: 12,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: event.color.withOpacity(
+                                          isDarkMode ? 0.4 : 0.15,
+                                        ),
+                                        borderRadius: BorderRadius.circular(3),
+                                        border: Border.all(
+                                          color: event.color.withOpacity(
+                                            0.5,
+                                          ),
+                                          width: 1,
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                )
-                                : Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children:
-                                      eventsAtThisHour.map((event) {
-                                        final isDarkMode =
-                                            Theme.of(context).brightness ==
-                                            Brightness.dark;
-
-                                        return GestureDetector(
-                                          onTap: () {
-                                            // Open the event editing form
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder:
-                                                    (context) =>
-                                                        EventFormScreen(
-                                                          event: event,
-                                                        ),
-                                              ),
-                                            ).then((updatedEvent) {
-                                              // If the event was updated
-                                              if (updatedEvent != null) {
-                                                eventManager.updateEvent(
-                                                  updatedEvent,
-                                                );
-                                              }
-                                            });
-                                          },
-                                          child: Container(
-                                            margin: const EdgeInsets.only(
-                                              bottom: 4,
-                                            ),
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 8,
-                                              horizontal: 12,
-                                            ),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 12,
+                                            height: 12,
                                             decoration: BoxDecoration(
-                                              color: event.color.withOpacity(
-                                                isDarkMode ? 0.4 : 0.15,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(3),
-                                              border: Border.all(
-                                                color: event.color.withOpacity(
-                                                  0.5,
-                                                ),
-                                                width: 1,
-                                              ),
+                                              color: event.color,
+                                              shape: BoxShape.circle,
                                             ),
-                                            child: Row(
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
-                                                Container(
-                                                  width: 12,
-                                                  height: 12,
-                                                  decoration: BoxDecoration(
-                                                    color: event.color,
-                                                    shape: BoxShape.circle,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Column(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
-                                                    children: [
-                                                      Text(
-                                                        event.title,
-                                                        style: TextStyle(
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                          color:
-                                                              isDarkMode
-                                                                  ? Colors.white
-                                                                  : ThemeProvider
-                                                                      .notionBlack,
-                                                        ),
-                                                      ),
-                                                      if (event
-                                                          .location
-                                                          .isNotEmpty) ...[
-                                                        const SizedBox(
-                                                          height: 4,
-                                                        ),
-                                                        Text(
-                                                          event.location,
-                                                          style: TextStyle(
-                                                            fontSize: 12,
-                                                            color:
-                                                                isDarkMode
-                                                                    ? ThemeProvider
-                                                                        .notionGray
-                                                                    : Colors
-                                                                        .grey[700],
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ],
-                                                  ),
-                                                ),
                                                 Text(
-                                                  '${DateFormat('h:mm a').format(event.startTime)} - ${DateFormat('h:mm a').format(event.endTime)}',
+                                                  event.title,
                                                   style: TextStyle(
-                                                    fontSize: 12,
-                                                    color:
-                                                        isDarkMode
-                                                            ? ThemeProvider
-                                                                .notionGray
-                                                            : Colors.grey[700],
+                                                    fontWeight: FontWeight.w500,
+                                                    color: isDarkMode
+                                                        ? Colors.white
+                                                        : ThemeProvider
+                                                            .notionBlack,
                                                   ),
                                                 ),
+                                                if (event
+                                                    .location.isNotEmpty) ...[
+                                                  const SizedBox(
+                                                    height: 4,
+                                                  ),
+                                                  Text(
+                                                    event.location,
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: isDarkMode
+                                                          ? ThemeProvider
+                                                              .notionGray
+                                                          : Colors.grey[700],
+                                                    ),
+                                                  ),
+                                                ],
                                               ],
                                             ),
                                           ),
-                                        );
-                                      }).toList(),
-                                ),
+                                          Text(
+                                            '${DateFormat('h:mm a').format(event.startTime)} - ${DateFormat('h:mm a').format(event.endTime)}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: isDarkMode
+                                                  ? ThemeProvider.notionGray
+                                                  : Colors.grey[700],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
                       ),
                     ],
                   ),
