@@ -29,12 +29,12 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Set Up Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: "temurin"
           java-version: "17"
@@ -109,7 +109,7 @@ jobs:
         run: flutter build appbundle --release
 
       - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: app-builds
           path: |
@@ -128,7 +128,7 @@ jobs:
           
       - name: Create GitHub Release
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.create_release == 'true'
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@v1.13.0
         with:
           artifacts: "${{ env.WORKDIR }}/build/app/outputs/flutter-apk/app-release.apk,${{ env.WORKDIR }}/build/app/outputs/bundle/release/app-release.aab"
           tag: v${{ env.VERSION_NAME }}
