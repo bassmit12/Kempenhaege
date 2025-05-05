@@ -67,7 +67,7 @@ jobs:
         working-directory: ${{ env.WORKDIR }}
         run: |
           rm -rf android
-          flutter create . --overwrite --android-language kotlin
+          flutter create --overwrite --project-name ai_scheduling_app --android-language kotlin .
 
       - name: Setup Local Properties
         run: |
