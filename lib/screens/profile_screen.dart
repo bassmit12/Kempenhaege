@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/theme_provider.dart';
+import 'preference_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -405,6 +406,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildNotionCard(
               title: 'Preferences',
               children: [
+                _buildPreferenceTile(
+                  title: 'Schedule Preferences',
+                  subtitle: 'Set your preferences for AI scheduling',
+                  icon: Icons.event_note,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const PreferenceScreen(),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(),
                 _buildPreferenceTile(
                   title: 'Notification Settings',
                   subtitle: 'Manage how you receive notifications',

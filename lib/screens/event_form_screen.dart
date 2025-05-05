@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../models/event.dart';
 import '../theme/theme_provider.dart';
 import '../services/event_service.dart';
+import '../services/schedule_recommendation_service.dart';
 
 class EventFormScreen extends StatefulWidget {
   final Event? event;
@@ -69,6 +70,18 @@ class _EventFormScreenState extends State<EventFormScreen> {
       _selectedColor = widget.event!.color;
       _isAllDay = widget.event!.isAllDay;
       _recurrenceRule = widget.event!.recurrenceRule;
+      
+      // Check if this is a past event and was AI-suggested
+      final isCompleted = widget.event!.endTime.isBefore(DateTime.now());
+      final isAISuggested = widget.event!.id.startsWith('suggested_');
+      
+      // If this is a completed AI-suggested event, show the feedback dialog
+      if (isCompleted && isAISuggested) {
+        // Use a slight delay to let the screen load first
+        Future.delayed(const Duration(milliseconds: 300), () {
+          _showFeedbackDialog(widget.event!);
+        });
+      }
     } else {
       // Use provided initial date or current date
       final initialDate = widget.initialDate ?? DateTime.now();
@@ -339,6 +352,180 @@ class _EventFormScreenState extends State<EventFormScreen> {
         ),
       ],
     );
+  }
+
+  void _showFeedbackDialog(Event event) {
+    // Default feedback scores
+    double timeAccuracy = 0.5;
+    double dayAccuracy = 0.5;
+    double categoryAccuracy = 0.5;
+    
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: Row(
+              children: [
+                const Icon(Icons.auto_awesome, color: ThemeProvider.notionBlue, size: 20),
+                const SizedBox(width: 8),
+                Text('How was this AI suggestion?', style: TextStyle(fontSize: 18)),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Your feedback helps our AI make better recommendations for you in the future.',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  // Time accuracy
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Was this a good time for this event?',
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Text('Poor'),
+                          Expanded(
+                            child: Slider(
+                              value: timeAccuracy,
+                              min: 0.0,
+                              max: 1.0,
+                              divisions: 4,
+                              label: _getScoreLabel(timeAccuracy),
+                              onChanged: (value) {
+                                setState(() {
+                                  timeAccuracy = value;
+                                });
+                              },
+                            ),
+                          ),
+                          const Text('Great'),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Day accuracy
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Was this day of the week suitable?',
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Text('Poor'),
+                          Expanded(
+                            child: Slider(
+                              value: dayAccuracy,
+                              min: 0.0,
+                              max: 1.0,
+                              divisions: 4,
+                              label: _getScoreLabel(dayAccuracy),
+                              onChanged: (value) {
+                                setState(() {
+                                  dayAccuracy = value;
+                                });
+                              },
+                            ),
+                          ),
+                          const Text('Great'),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Category accuracy
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Did you enjoy this category of event?',
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Text('Poor'),
+                          Expanded(
+                            child: Slider(
+                              value: categoryAccuracy,
+                              min: 0.0,
+                              max: 1.0,
+                              divisions: 4,
+                              label: _getScoreLabel(categoryAccuracy),
+                              onChanged: (value) {
+                                setState(() {
+                                  categoryAccuracy = value;
+                                });
+                              },
+                            ),
+                          ),
+                          const Text('Great'),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  // Use feedback to train the neural network
+                  final recommendationService = ScheduleRecommendationService();
+                  recommendationService.updateNetworkWeights({
+                    'timeAccuracy': timeAccuracy,
+                    'dayAccuracy': dayAccuracy,
+                    'categoryAccuracy': categoryAccuracy,
+                  });
+                  
+                  Navigator.of(context).pop();
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Thank you for your feedback! Our AI will use it to improve.'),
+                      backgroundColor: ThemeProvider.notionBlue,
+                    ),
+                  );
+                },
+                child: const Text('Submit'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+  
+  String _getScoreLabel(double score) {
+    if (score < 0.25) {
+      return 'Poor';
+    } else if (score < 0.5) {
+      return 'Fair';
+    } else if (score < 0.75) {
+      return 'Good';
+    } else {
+      return 'Excellent';
+    }
   }
 
   @override
