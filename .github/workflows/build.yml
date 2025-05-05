@@ -63,6 +63,12 @@ jobs:
         working-directory: ${{ env.WORKDIR }}
         run: flutter pub get
 
+      - name: Regenerate Android project (Kotlin + Groovy DSL)
+        working-directory: ${{ env.WORKDIR }}
+        run: |
+          rm -rf android
+          flutter create . --overwrite --android-language kotlin
+
       - name: Setup Local Properties
         run: |
           mkdir -p ${{ env.ANDROID_DIR }}
