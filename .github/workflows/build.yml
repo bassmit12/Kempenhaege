@@ -131,22 +131,26 @@ jobs:
             if ! grep -q "com.google.android.play:core" "android/app/build.gradle.kts"; then
               # For Kotlin DSL build.gradle.kts
               echo 'Adding dependencies block with Play Core to build.gradle.kts'
-              echo '
+              cat >> "android/app/build.gradle.kts" << 'EOL'
+
 dependencies {
     // Add Play Core library for dynamic feature delivery support
     implementation("com.google.android.play:core:1.10.3")
-}' >> "android/app/build.gradle.kts"
+}
+EOL
             fi
           elif [ -f "android/app/build.gradle" ]; then
             # Check if the dependency is already added
             if ! grep -q "com.google.android.play:core" "android/app/build.gradle"; then
               # For Groovy build.gradle
               echo 'Adding dependencies block with Play Core to build.gradle'
-              echo '
+              cat >> "android/app/build.gradle" << 'EOL'
+
 dependencies {
     // Add Play Core library for dynamic feature delivery support
     implementation "com.google.android.play:core:1.10.3"
-}' >> "android/app/build.gradle"
+}
+EOL
             fi
           else
             echo "Warning: Could not find build.gradle or build.gradle.kts file!"
