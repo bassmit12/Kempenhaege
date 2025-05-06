@@ -54,6 +54,28 @@ jobs:
         working-directory: ${{ env.WORKDIR }}
         run: flutter pub get
       
+      - name: Fix Android Embedding Issue
+        working-directory: ${{ env.WORKDIR }}
+        run: |
+          # Create a copy of the main AndroidManifest.xml in the android root directory
+          # This fixes the "No android/AndroidManifest.xml file" error
+          if [ -f "android/app/src/main/AndroidManifest.xml" ]; then
+            cp android/app/src/main/AndroidManifest.xml android/AndroidManifest.xml
+            echo "Created copy of AndroidManifest.xml in android root directory"
+          else
+            echo "Warning: Main AndroidManifest.xml not found!"
+          fi
+          
+          # Verify the Flutter embedding version
+          echo "Checking Flutter embedding version in AndroidManifest.xml..."
+          if grep -q 'android:name="flutterEmbedding" android:value="2"' android/app/src/main/AndroidManifest.xml; then
+            echo "Confirmed AndroidManifest.xml is using embedding v2"
+          else
+            echo "Adding Flutter embedding v2 metadata to AndroidManifest.xml"
+            sed -i '/<\/application>/i \        <meta-data android:name="flutterEmbedding" android:value="2" \/>' android/app/src/main/AndroidManifest.xml
+            cp android/app/src/main/AndroidManifest.xml android/AndroidManifest.xml
+          fi
+      
       - name: Setup Keystore
         working-directory: ${{ env.WORKDIR }}
         run: |
