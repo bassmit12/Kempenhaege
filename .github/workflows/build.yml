@@ -76,6 +76,68 @@ jobs:
             cp android/app/src/main/AndroidManifest.xml android/AndroidManifest.xml
           fi
       
+      - name: Update Gradle Configuration
+        working-directory: ${{ env.WORKDIR }}
+        run: |
+          echo "Updating Gradle configuration for compatibility..."
+          
+          # Fix the build.gradle.kts file if needed
+          if [ -f "android/build.gradle.kts" ]; then
+            # Create simpler build.gradle file that's compatible with Flutter's expectations
+            cat > android/build.gradle << 'EOL'
+buildscript {
+    ext.kotlin_version = '1.9.22'
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.2.2'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.buildDir = '../build'
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
+EOL
+            echo "Created compatible build.gradle file"
+          fi
+          
+          # Update gradle-wrapper.properties to ensure it uses a compatible Gradle version
+          mkdir -p android/gradle/wrapper
+          echo "distributionBase=GRADLE_USER_HOME" > android/gradle/wrapper/gradle-wrapper.properties
+          echo "distributionPath=wrapper/dists" >> android/gradle/wrapper/gradle-wrapper.properties
+          echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.5-all.zip" >> android/gradle/wrapper/gradle-wrapper.properties
+          echo "zipStoreBase=GRADLE_USER_HOME" >> android/gradle/wrapper/gradle-wrapper.properties
+          echo "zipStorePath=wrapper/dists" >> android/gradle/wrapper/gradle-wrapper.properties
+          echo "Updated gradle-wrapper.properties"
+          
+          # Ensure gradle.properties has the correct settings
+          echo "org.gradle.jvmargs=-Xmx1536M -Dkotlin.daemon.jvm.options=\"-Xmx1536M\"" > android/gradle.properties
+          echo "android.useAndroidX=true" >> android/gradle.properties
+          echo "android.enableJetifier=true" >> android/gradle.properties
+          echo "android.nonTransitiveRClass=true" >> android/gradle.properties
+          echo "kotlin.code.style=official" >> android/gradle.properties
+          echo "Updated gradle.properties"
+          
+          # Update local.properties
+          echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
+          echo "Updated local.properties with Flutter SDK path: $FLUTTER_ROOT"
+      
       - name: Setup Keystore
         working-directory: ${{ env.WORKDIR }}
         run: |
