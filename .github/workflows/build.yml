@@ -63,11 +63,32 @@ jobs:
         working-directory: ${{ env.WORKDIR }}
         run: flutter pub get
 
-      - name: Regenerate Android project (Kotlin + Groovy DSL)
+      - name: Update Android Config (Not Recreate)
         working-directory: ${{ env.WORKDIR }}
         run: |
-          rm -rf android
-          flutter create --overwrite --project-name ai_scheduling_app --android-language kotlin .
+          # Backup the original AndroidManifest.xml
+          mkdir -p android_config_backup
+          if [ -f "android/app/src/main/AndroidManifest.xml" ]; then
+            cp android/app/src/main/AndroidManifest.xml android_config_backup/
+          fi
+          
+          # Instead of recreating the entire project, just update build.gradle files
+          flutter config --no-analytics
+          flutter doctor
+          
+          # If gradle wrapper is missing, create just the android folder structure
+          if [ ! -f "android/gradlew" ]; then
+            echo "Gradle wrapper missing, creating minimal Android structure"
+            mkdir -p android/app/src/main
+            
+            # Create minimal build files without removing existing code
+            flutter create --platforms=android --org com.kempenhaege.schedule --project-name ai_scheduling_app --no-pub .
+          fi
+          
+          # Restore the original AndroidManifest if it was backed up
+          if [ -f "android_config_backup/AndroidManifest.xml" ]; then
+            cp android_config_backup/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          fi
 
       - name: Setup Local Properties
         run: |
@@ -105,7 +126,50 @@ jobs:
       - name: Add stub root AndroidManifest
         working-directory: ${{ env.WORKDIR }}
         run: |
-          cp android/app/src/main/AndroidManifest.xml android/AndroidManifest.xml
+          if [ ! -f "android/AndroidManifest.xml" ] && [ -f "android/app/src/main/AndroidManifest.xml" ]; then
+            cp android/app/src/main/AndroidManifest.xml android/AndroidManifest.xml
+          fi
+
+      - name: Update app build.gradle for signing
+        working-directory: ${{ env.WORKDIR }}
+        run: |
+          # Check if the app/build.gradle file exists
+          if [ -f "android/app/build.gradle" ]; then
+            # Create a backup
+            cp android/app/build.gradle android/app/build.gradle.bak
+            
+            # Add signing config block if it doesn't exist
+            if ! grep -q "signingConfigs" android/app/build.gradle; then
+              cat <<EOT > android/app/build.gradle.new
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+$(cat android/app/build.gradle)
+
+android {
+    signingConfigs {
+        release {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+            storePassword keystoreProperties['storePassword']
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
+    }
+}
+EOT
+              mv android/app/build.gradle.new android/app/build.gradle
+            fi
+          else
+            echo "Warning: android/app/build.gradle not found!"
+          fi
 
       - name: Build Debug APK
         working-directory: ${{ env.WORKDIR }}

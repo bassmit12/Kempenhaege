@@ -38,10 +38,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       padding: const EdgeInsets.all(24.0),
       decoration: BoxDecoration(
-        color:
-            isDarkMode
-                ? ThemeProvider.notionDarkGray
-                : ThemeProvider.notionFaintBlue,
+        color: isDarkMode
+            ? ThemeProvider.notionDarkGray
+            : ThemeProvider.notionFaintBlue,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Column(
@@ -223,19 +222,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color:
-                    isDarkMode
-                        ? const Color(0xFF404040)
-                        : ThemeProvider.notionLightGray,
+                color: isDarkMode
+                    ? const Color(0xFF404040)
+                    : ThemeProvider.notionLightGray,
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Icon(
                 icon,
                 size: 20,
-                color:
-                    isDarkMode
-                        ? ThemeProvider.notionGray
-                        : ThemeProvider.notionBlack,
+                color: isDarkMode
+                    ? ThemeProvider.notionGray
+                    : ThemeProvider.notionBlack,
               ),
             ),
             const SizedBox(width: 16),
@@ -256,10 +253,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     subtitle,
                     style: TextStyle(
                       fontSize: 13,
-                      color:
-                          isDarkMode
-                              ? ThemeProvider.notionGray
-                              : Colors.grey[700],
+                      color: isDarkMode
+                          ? ThemeProvider.notionGray
+                          : Colors.grey[700],
                     ),
                   ),
                 ],
@@ -311,27 +307,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           _isSaving
               ? Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: ThemeProvider.notionBlue,
+                  padding: const EdgeInsets.all(16.0),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: ThemeProvider.notionBlue,
+                    ),
                   ),
-                ),
-              )
+                )
               : TextButton(
-                onPressed: _saveProfile,
-                child: Text(
-                  'Save',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: ThemeProvider.notionBlue,
+                  onPressed: _saveProfile,
+                  child: Text(
+                    'Save',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: ThemeProvider.notionBlue,
+                    ),
                   ),
                 ),
-              ),
         ],
       ),
       body: Form(
@@ -512,10 +508,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       foregroundColor:
                           isDarkMode ? Colors.white : ThemeProvider.notionBlack,
                       side: BorderSide(
-                        color:
-                            isDarkMode
-                                ? const Color(0xFF404040)
-                                : const Color(0xFFE0E0E0),
+                        color: isDarkMode
+                            ? const Color(0xFF404040)
+                            : const Color(0xFFE0E0E0),
                       ),
                     ),
                   ),

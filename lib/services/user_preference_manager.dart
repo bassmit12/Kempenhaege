@@ -10,22 +10,22 @@ class UserPreferenceManager extends ChangeNotifier {
   List<EventCategory> _categories = [];
   bool _isLoading = false;
   String? _error;
-  
+
   // Getters
   User? get currentUser => _currentUser;
   List<EventCategory> get categories => _categories;
   bool get isLoading => _isLoading;
   String? get error => _error;
-  
+
   // Initialize with some default categories
   Future<void> initialize() async {
     _isLoading = true;
     notifyListeners();
-    
+
     try {
       // Load saved user from local storage
       await _loadUserFromStorage();
-      
+
       // Initialize with default categories if none exist
       if (_categories.isEmpty) {
         _categories = [
@@ -61,7 +61,7 @@ class UserPreferenceManager extends ChangeNotifier {
           ),
         ];
       }
-      
+
       // If no user exists, create a default one
       if (_currentUser == null) {
         _currentUser = User(
@@ -72,7 +72,7 @@ class UserPreferenceManager extends ChangeNotifier {
           preferences: [], // No preferences set yet
         );
       }
-      
+
       _error = null;
     } catch (e) {
       _error = 'Failed to initialize user preferences: $e';
@@ -82,66 +82,70 @@ class UserPreferenceManager extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   // Load user data from local storage
   Future<void> _loadUserFromStorage() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userJson = prefs.getString('user_data');
-      
+
       if (userJson != null) {
         final userData = jsonDecode(userJson) as Map<String, dynamic>;
         _currentUser = User.fromJson(userData);
-        print('UserPreferenceManager: Loaded user ${_currentUser!.name} from storage');
+        print(
+            'UserPreferenceManager: Loaded user ${_currentUser!.name} from storage');
       }
-      
+
       final categoriesJson = prefs.getString('categories');
       if (categoriesJson != null) {
         final categoriesList = jsonDecode(categoriesJson) as List;
         _categories = categoriesList
             .map((cat) => EventCategory.fromJson(cat as Map<String, dynamic>))
             .toList();
-        print('UserPreferenceManager: Loaded ${_categories.length} categories from storage');
+        print(
+            'UserPreferenceManager: Loaded ${_categories.length} categories from storage');
       }
     } catch (e) {
       print('UserPreferenceManager: Error loading from storage - $e');
       // Silently fail and use defaults
     }
   }
-  
+
   // Save user data to local storage
   Future<void> _saveUserToStorage() async {
     if (_currentUser == null) return;
-    
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final userJson = jsonEncode(_currentUser!.toJson());
       await prefs.setString('user_data', userJson);
-      
-      final categoriesJson = jsonEncode(_categories.map((c) => c.toJson()).toList());
+
+      final categoriesJson =
+          jsonEncode(_categories.map((c) => c.toJson()).toList());
       await prefs.setString('categories', categoriesJson);
-      
+
       print('UserPreferenceManager: Saved user and categories to storage');
     } catch (e) {
       print('UserPreferenceManager: Error saving to storage - $e');
       // Handle error but don't throw to avoid disrupting the app flow
     }
   }
-  
+
   // Update a user's preference for a specific category
   Future<void> updatePreference(EventPreference preference) async {
     if (_currentUser == null) return;
-    
+
     _isLoading = true;
     notifyListeners();
-    
+
     try {
       // Check if this preference already exists
       final existingIndex = _currentUser!.preferences
           .indexWhere((p) => p.categoryId == preference.categoryId);
-      
-      final updatedPreferences = List<EventPreference>.from(_currentUser!.preferences);
-      
+
+      final updatedPreferences =
+          List<EventPreference>.from(_currentUser!.preferences);
+
       if (existingIndex >= 0) {
         // Update existing preference
         updatedPreferences[existingIndex] = preference;
@@ -149,13 +153,13 @@ class UserPreferenceManager extends ChangeNotifier {
         // Add new preference
         updatedPreferences.add(preference);
       }
-      
+
       // Create updated user
       _currentUser = _currentUser!.copyWith(preferences: updatedPreferences);
-      
+
       // Save to storage
       await _saveUserToStorage();
-      
+
       _error = null;
     } catch (e) {
       _error = 'Failed to update preference: $e';
@@ -165,16 +169,16 @@ class UserPreferenceManager extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   // Add a new category
   Future<void> addCategory(EventCategory category) async {
     _isLoading = true;
     notifyListeners();
-    
+
     try {
       // Check if a category with this ID already exists
       final existingIndex = _categories.indexWhere((c) => c.id == category.id);
-      
+
       if (existingIndex >= 0) {
         // Update existing category
         _categories[existingIndex] = category;
@@ -182,10 +186,10 @@ class UserPreferenceManager extends ChangeNotifier {
         // Add new category
         _categories.add(category);
       }
-      
+
       // Save to storage
       await _saveUserToStorage();
-      
+
       _error = null;
     } catch (e) {
       _error = 'Failed to add category: $e';
@@ -195,28 +199,28 @@ class UserPreferenceManager extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   // Delete a category
   Future<void> deleteCategory(String categoryId) async {
     _isLoading = true;
     notifyListeners();
-    
+
     try {
       // Remove the category
       _categories.removeWhere((c) => c.id == categoryId);
-      
+
       // Also remove any user preferences for this category
       if (_currentUser != null) {
         final updatedPreferences = _currentUser!.preferences
             .where((p) => p.categoryId != categoryId)
             .toList();
-        
+
         _currentUser = _currentUser!.copyWith(preferences: updatedPreferences);
       }
-      
+
       // Save to storage
       await _saveUserToStorage();
-      
+
       _error = null;
     } catch (e) {
       _error = 'Failed to delete category: $e';
@@ -226,7 +230,7 @@ class UserPreferenceManager extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   // Get a specific category by ID
   EventCategory? getCategoryById(String categoryId) {
     try {
@@ -235,11 +239,11 @@ class UserPreferenceManager extends ChangeNotifier {
       return null;
     }
   }
-  
+
   // Get user preference for a specific category
   EventPreference? getPreferenceForCategory(String categoryId) {
     if (_currentUser == null) return null;
-    
+
     try {
       return _currentUser!.preferences.firstWhere(
         (p) => p.categoryId == categoryId,
@@ -249,7 +253,7 @@ class UserPreferenceManager extends ChangeNotifier {
       return null;
     }
   }
-  
+
   // Update user information
   Future<void> updateUserInfo({
     String? name,
@@ -257,20 +261,20 @@ class UserPreferenceManager extends ChangeNotifier {
     String? role,
   }) async {
     if (_currentUser == null) return;
-    
+
     _isLoading = true;
     notifyListeners();
-    
+
     try {
       _currentUser = _currentUser!.copyWith(
         name: name ?? _currentUser!.name,
         email: email ?? _currentUser!.email,
         role: role ?? _currentUser!.role,
       );
-      
+
       // Save to storage
       await _saveUserToStorage();
-      
+
       _error = null;
     } catch (e) {
       _error = 'Failed to update user info: $e';

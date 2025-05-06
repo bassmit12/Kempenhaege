@@ -29,14 +29,14 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
   Widget build(BuildContext context) {
     final preferenceManager = Provider.of<UserPreferenceManager>(context);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     if (preferenceManager.isLoading) {
       return Scaffold(
         appBar: AppBar(title: const Text('My Preferences')),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Preferences'),
@@ -84,7 +84,8 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.info_outline, color: ThemeProvider.notionBlue),
+                            const Icon(Icons.info_outline,
+                                color: ThemeProvider.notionBlue),
                             const SizedBox(width: 8),
                             Text(
                               'How it works',
@@ -101,17 +102,18 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                     ),
                   ),
                 ),
-                
+
                 Text(
                   'Event Categories',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 12),
-                
+
                 ...preferenceManager.categories.map((category) {
                   // Get existing preference if any
-                  final preference = preferenceManager.getPreferenceForCategory(category.id);
-                  
+                  final preference =
+                      preferenceManager.getPreferenceForCategory(category.id);
+
                   return _buildCategoryPreferenceCard(
                     context,
                     category,
@@ -119,14 +121,14 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                     isDarkMode,
                   );
                 }).toList(),
-                
+
                 const SizedBox(height: 24),
                 Text(
                   'Schedule Preferences',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 12),
-                
+
                 // Global schedule preferences (future enhancement)
                 Card(
                   child: Padding(
@@ -136,7 +138,8 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.schedule, color: ThemeProvider.notionBlue),
+                            const Icon(Icons.schedule,
+                                color: ThemeProvider.notionBlue),
                             const SizedBox(width: 8),
                             Text(
                               'Schedule Generation',
@@ -147,8 +150,10 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                         const SizedBox(height: 16),
                         ListTile(
                           title: const Text('Generate suggested schedules'),
-                          subtitle: const Text('Let the AI suggest optimal schedules based on your preferences'),
-                          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                          subtitle: const Text(
+                              'Let the AI suggest optimal schedules based on your preferences'),
+                          trailing:
+                              const Icon(Icons.arrow_forward_ios, size: 16),
                           onTap: () {
                             // Navigate to schedule generation screen
                             _showScheduleGenerationDialog();
@@ -162,7 +167,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
             ),
     );
   }
-  
+
   Widget _buildCategoryPreferenceCard(
     BuildContext context,
     EventCategory category,
@@ -172,8 +177,9 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
     // Default values if no preference exists
     double preferenceScore = preference?.preferenceScore ?? 0.5;
     int preferredHour = preference?.averageHourPreference ?? 9;
-    List<int> preferredDays = preference?.preferredDaysOfWeek ?? [1, 2, 3, 4, 5];
-    
+    List<int> preferredDays =
+        preference?.preferredDaysOfWeek ?? [1, 2, 3, 4, 5];
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -209,7 +215,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                 ),
               ],
             ),
-            
+
             if (category.description.isNotEmpty) ...[
               const SizedBox(height: 4),
               Text(
@@ -220,9 +226,9 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                 ),
               ),
             ],
-            
+
             const Divider(height: 24),
-            
+
             // Preference score
             Row(
               children: [
@@ -233,9 +239,9 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                 _buildPreferenceIndicator(preferenceScore),
               ],
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             // Preferred time
             Row(
               children: [
@@ -246,9 +252,9 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                 Text(_formatHour(preferredHour)),
               ],
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             // Preferred days
             Row(
               children: [
@@ -264,11 +270,11 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
       ),
     );
   }
-  
+
   Widget _buildPreferenceIndicator(double score) {
     String label;
     Color color;
-    
+
     if (score < 0.25) {
       label = 'Strongly Dislike';
       color = Colors.red;
@@ -285,7 +291,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
       label = 'Strongly Like';
       color = Colors.green;
     }
-    
+
     return Row(
       children: [
         Text(
@@ -307,10 +313,10 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
       ],
     );
   }
-  
+
   String _formatHour(int hour) {
     final is24Hour = MediaQuery.of(context).alwaysUse24HourFormat;
-    
+
     if (is24Hour) {
       return '$hour:00';
     } else {
@@ -319,39 +325,45 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
       return '$displayHour:00 $period';
     }
   }
-  
+
   String _formatDays(List<int> days) {
     if (days.length == 7) {
       return 'Every day';
-    } else if (days.length == 5 && 
-               days.contains(1) && 
-               days.contains(2) && 
-               days.contains(3) && 
-               days.contains(4) && 
-               days.contains(5)) {
+    } else if (days.length == 5 &&
+        days.contains(1) &&
+        days.contains(2) &&
+        days.contains(3) &&
+        days.contains(4) &&
+        days.contains(5)) {
       return 'Weekdays';
-    } else if (days.length == 2 && 
-               days.contains(6) && 
-               days.contains(7)) {
+    } else if (days.length == 2 && days.contains(6) && days.contains(7)) {
       return 'Weekends';
     } else {
       final dayNames = days.map((day) {
         switch (day) {
-          case 1: return 'Mon';
-          case 2: return 'Tue';
-          case 3: return 'Wed';
-          case 4: return 'Thu';
-          case 5: return 'Fri';
-          case 6: return 'Sat';
-          case 7: return 'Sun';
-          default: return '';
+          case 1:
+            return 'Mon';
+          case 2:
+            return 'Tue';
+          case 3:
+            return 'Wed';
+          case 4:
+            return 'Thu';
+          case 5:
+            return 'Fri';
+          case 6:
+            return 'Sat';
+          case 7:
+            return 'Sun';
+          default:
+            return '';
         }
       }).join(', ');
-      
+
       return dayNames;
     }
   }
-  
+
   void _showPreferenceEditDialog(
     BuildContext context,
     EventCategory category,
@@ -361,9 +373,8 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
     double preferenceScore = existingPreference?.preferenceScore ?? 0.5;
     int preferredHour = existingPreference?.averageHourPreference ?? 9;
     List<int> preferredDays = List<int>.from(
-      existingPreference?.preferredDaysOfWeek ?? [1, 2, 3, 4, 5]
-    );
-    
+        existingPreference?.preferredDaysOfWeek ?? [1, 2, 3, 4, 5]);
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -401,7 +412,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Preferred hour picker
                   Text(
                     'Preferred time of day',
@@ -412,7 +423,8 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                     value: preferredHour,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
                     items: List.generate(24, (index) {
                       return DropdownMenuItem<int>(
@@ -429,7 +441,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Preferred days
                   Text(
                     'Preferred days of week',
@@ -504,7 +516,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                       }),
                     ],
                   ),
-                  
+
                   if (preferredDays.isEmpty) ...[
                     const SizedBox(height: 8),
                     const Text(
@@ -522,7 +534,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
               ),
               TextButton(
                 onPressed: preferredDays.isEmpty
-                    ? null 
+                    ? null
                     : () {
                         final newPreference = EventPreference(
                           categoryId: category.id,
@@ -532,10 +544,11 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                           averageHourPreference: preferredHour,
                           preferredDaysOfWeek: preferredDays,
                         );
-                        
-                        Provider.of<UserPreferenceManager>(context, listen: false)
+
+                        Provider.of<UserPreferenceManager>(context,
+                                listen: false)
                             .updatePreference(newPreference);
-                        
+
                         Navigator.pop(context);
                       },
                 child: const Text('Save'),
@@ -546,7 +559,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
       ),
     );
   }
-  
+
   Widget _buildDayToggle(
     String label,
     int dayValue,
@@ -554,7 +567,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
     Function(bool) onChanged,
   ) {
     final isSelected = selectedDays.contains(dayValue);
-    
+
     return FilterChip(
       label: Text(label),
       selected: isSelected,
@@ -568,7 +581,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
       ),
     );
   }
-  
+
   void _showHelpDialog() {
     showDialog(
       context: context,
@@ -588,7 +601,6 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                 'Our AI scheduler uses your preferences to suggest optimal schedules. Here\'s what each setting means:',
               ),
               SizedBox(height: 16),
-              
               Text(
                 'Preference Score',
                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -597,7 +609,6 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                 'Indicates how much you enjoy or prefer working on this category of events. The AI will try to allocate more of your preferred event types.',
               ),
               SizedBox(height: 12),
-              
               Text(
                 'Preferred Time',
                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -606,7 +617,6 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                 'The time of day when you prefer to handle this type of event. The AI will try to schedule events near your preferred hours.',
               ),
               SizedBox(height: 12),
-              
               Text(
                 'Preferred Days',
                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -615,7 +625,6 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                 'The days of the week when you prefer to handle this type of event. The AI will prioritize scheduling on your preferred days.',
               ),
               SizedBox(height: 16),
-              
               Text(
                 'The more accurate your preferences, the better the AI can create schedules tailored to your working style!',
                 style: TextStyle(fontStyle: FontStyle.italic),
@@ -632,13 +641,15 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
       ),
     );
   }
-  
+
   void _showScheduleGenerationDialog() {
-    final preferenceManager = Provider.of<UserPreferenceManager>(context, listen: false);
+    final preferenceManager =
+        Provider.of<UserPreferenceManager>(context, listen: false);
     DateTime startDate = DateTime.now().add(const Duration(days: 1));
-    startDate = DateTime(startDate.year, startDate.month, startDate.day); // Normalize to midnight
+    startDate = DateTime(startDate.year, startDate.month,
+        startDate.day); // Normalize to midnight
     DateTime endDate = startDate.add(const Duration(days: 7));
-    
+
     // Default requirements - one of each category
     final requirements = preferenceManager.categories.map((category) {
       return {
@@ -646,7 +657,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
         'count': 1,
       };
     }).toList();
-    
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -662,7 +673,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                     'Let our AI generate an optimized schedule based on your preferences',
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Date range selection
                   Text(
                     'Date Range',
@@ -673,7 +684,8 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                       Expanded(
                         child: TextFormField(
                           readOnly: true,
-                          initialValue: DateFormat('MM/dd/yyyy').format(startDate),
+                          initialValue:
+                              DateFormat('MM/dd/yyyy').format(startDate),
                           decoration: const InputDecoration(
                             labelText: 'Start Date',
                             suffixIcon: Icon(Icons.calendar_today),
@@ -683,14 +695,16 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                               context: context,
                               initialDate: startDate,
                               firstDate: DateTime.now(),
-                              lastDate: DateTime.now().add(const Duration(days: 365)),
+                              lastDate:
+                                  DateTime.now().add(const Duration(days: 365)),
                             );
-                            
+
                             if (picked != null && picked != startDate) {
                               setState(() {
                                 startDate = picked;
                                 if (endDate.isBefore(startDate)) {
-                                  endDate = startDate.add(const Duration(days: 7));
+                                  endDate =
+                                      startDate.add(const Duration(days: 7));
                                 }
                               });
                             }
@@ -701,7 +715,8 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                       Expanded(
                         child: TextFormField(
                           readOnly: true,
-                          initialValue: DateFormat('MM/dd/yyyy').format(endDate),
+                          initialValue:
+                              DateFormat('MM/dd/yyyy').format(endDate),
                           decoration: const InputDecoration(
                             labelText: 'End Date',
                             suffixIcon: Icon(Icons.calendar_today),
@@ -711,9 +726,10 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                               context: context,
                               initialDate: endDate,
                               firstDate: startDate,
-                              lastDate: startDate.add(const Duration(days: 365)),
+                              lastDate:
+                                  startDate.add(const Duration(days: 365)),
                             );
-                            
+
                             if (picked != null && picked != endDate) {
                               setState(() {
                                 endDate = picked;
@@ -725,7 +741,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Event requirements
                   Text(
                     'Event Requirements',
@@ -737,13 +753,13 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                     style: TextStyle(fontSize: 12),
                   ),
                   const SizedBox(height: 12),
-                  
+
                   ...preferenceManager.categories.map((category) {
                     final requirement = requirements.firstWhere(
                       (r) => r['categoryId'] == category.id,
                       orElse: () => {'categoryId': category.id, 'count': 0},
                     );
-                    
+
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Row(
@@ -783,7 +799,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                                     final index = requirements.indexWhere(
                                       (r) => r['categoryId'] == category.id,
                                     );
-                                    
+
                                     if (index >= 0) {
                                       requirements[index]['count'] = value;
                                     } else {
@@ -815,23 +831,24 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
                   final validRequirements = requirements
                       .where((r) => (r['count'] as int) > 0)
                       .toList();
-                  
+
                   if (validRequirements.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Please specify at least one event requirement'),
+                        content: Text(
+                            'Please specify at least one event requirement'),
                       ),
                     );
                     return;
                   }
-                  
+
                   // Generate schedule and show results
                   _generateAndShowSchedule(
                     startDate,
                     endDate,
                     validRequirements,
                   );
-                  
+
                   Navigator.pop(context);
                 },
                 child: const Text('Generate'),
@@ -842,23 +859,24 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
       ),
     );
   }
-  
+
   void _generateAndShowSchedule(
     DateTime startDate,
     DateTime endDate,
     List<Map<String, dynamic>> requirements,
   ) async {
     // Get the current user and preference manager
-    final preferenceManager = Provider.of<UserPreferenceManager>(context, listen: false);
+    final preferenceManager =
+        Provider.of<UserPreferenceManager>(context, listen: false);
     final user = preferenceManager.currentUser;
-    
+
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('User profile not found')),
       );
       return;
     }
-    
+
     // Show loading indicator
     showDialog(
       context: context,
@@ -867,7 +885,7 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
         child: CircularProgressIndicator(),
       ),
     );
-    
+
     // Generate the schedule using the recommendation service
     final recommendationService = ScheduleRecommendationService();
     final suggestedEvents = await recommendationService.suggestSchedule(
@@ -876,10 +894,10 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
       startDate: startDate,
       endDate: endDate,
     );
-    
+
     // Hide loading indicator
     Navigator.pop(context);
-    
+
     // Show the suggested schedule
     showDialog(
       context: context,
@@ -926,15 +944,17 @@ class _PreferenceScreenState extends State<PreferenceScreen> {
             child: const Text('Close'),
           ),
           TextButton(
-            onPressed: suggestedEvents.isEmpty ? null : () {
-              // TODO: In a real implementation, this would add the events to the user's calendar
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Schedule applied successfully'),
-                ),
-              );
-            },
+            onPressed: suggestedEvents.isEmpty
+                ? null
+                : () {
+                    // TODO: In a real implementation, this would add the events to the user's calendar
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Schedule applied successfully'),
+                      ),
+                    );
+                  },
             child: const Text('Apply Schedule'),
           ),
         ],

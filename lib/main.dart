@@ -15,7 +15,7 @@ void main() {
   // Initialize the schedule recommendation service
   final recommendationService = ScheduleRecommendationService();
   recommendationService.initializeNetwork();
-  
+
   runApp(
     MultiProvider(
       providers: [
@@ -81,8 +81,9 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
   }
 
   void _showAIScheduleRecommendations() {
-    final preferenceManager = Provider.of<UserPreferenceManager>(context, listen: false);
-    
+    final preferenceManager =
+        Provider.of<UserPreferenceManager>(context, listen: false);
+
     // Initialize preference manager if needed
     if (preferenceManager.categories.isEmpty) {
       preferenceManager.initialize().then((_) {
@@ -92,13 +93,14 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
       _displayScheduleDialog(preferenceManager);
     }
   }
-  
+
   void _displayScheduleDialog(UserPreferenceManager preferenceManager) {
     // Default date range: next 7 days
     DateTime startDate = DateTime.now().add(const Duration(days: 1));
-    startDate = DateTime(startDate.year, startDate.month, startDate.day); // Normalize to midnight
+    startDate = DateTime(startDate.year, startDate.month,
+        startDate.day); // Normalize to midnight
     DateTime endDate = startDate.add(const Duration(days: 7));
-    
+
     // Default requirements - one of each category
     final requirements = preferenceManager.categories.map((category) {
       return {
@@ -106,7 +108,7 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
         'count': 1,
       };
     }).toList();
-    
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -120,23 +122,25 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.auto_awesome, color: ThemeProvider.notionBlue, size: 20),
+                      const Icon(Icons.auto_awesome,
+                          color: ThemeProvider.notionBlue, size: 20),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Let our AI suggest optimal events based on your preferences',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Theme.of(context).brightness == Brightness.dark
-                                ? Colors.grey[300]
-                                : Colors.grey[700],
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.grey[300]
+                                    : Colors.grey[700],
                           ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Date range selection
                   Text(
                     'Date Range',
@@ -148,25 +152,29 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
                       Expanded(
                         child: TextFormField(
                           readOnly: true,
-                          initialValue: DateFormat('MM/dd/yyyy').format(startDate),
+                          initialValue:
+                              DateFormat('MM/dd/yyyy').format(startDate),
                           decoration: const InputDecoration(
                             labelText: 'Start Date',
                             suffixIcon: Icon(Icons.calendar_today, size: 18),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 12),
                           ),
                           onTap: () async {
                             final picked = await showDatePicker(
                               context: context,
                               initialDate: startDate,
                               firstDate: DateTime.now(),
-                              lastDate: DateTime.now().add(const Duration(days: 365)),
+                              lastDate:
+                                  DateTime.now().add(const Duration(days: 365)),
                             );
-                            
+
                             if (picked != null && picked != startDate) {
                               setState(() {
                                 startDate = picked;
                                 if (endDate.isBefore(startDate)) {
-                                  endDate = startDate.add(const Duration(days: 7));
+                                  endDate =
+                                      startDate.add(const Duration(days: 7));
                                 }
                               });
                             }
@@ -177,20 +185,23 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
                       Expanded(
                         child: TextFormField(
                           readOnly: true,
-                          initialValue: DateFormat('MM/dd/yyyy').format(endDate),
+                          initialValue:
+                              DateFormat('MM/dd/yyyy').format(endDate),
                           decoration: const InputDecoration(
                             labelText: 'End Date',
                             suffixIcon: Icon(Icons.calendar_today, size: 18),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 12),
                           ),
                           onTap: () async {
                             final picked = await showDatePicker(
                               context: context,
                               initialDate: endDate,
                               firstDate: startDate,
-                              lastDate: startDate.add(const Duration(days: 365)),
+                              lastDate:
+                                  startDate.add(const Duration(days: 365)),
                             );
-                            
+
                             if (picked != null && picked != endDate) {
                               setState(() {
                                 endDate = picked;
@@ -202,7 +213,7 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Event requirements
                   Text(
                     'Event Requirements',
@@ -214,13 +225,13 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
                     style: TextStyle(fontSize: 12),
                   ),
                   const SizedBox(height: 12),
-                  
+
                   ...preferenceManager.categories.map((category) {
                     final requirement = requirements.firstWhere(
                       (r) => r['categoryId'] == category.id,
                       orElse: () => {'categoryId': category.id, 'count': 0},
                     );
-                    
+
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Row(
@@ -260,7 +271,7 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
                                     final index = requirements.indexWhere(
                                       (r) => r['categoryId'] == category.id,
                                     );
-                                    
+
                                     if (index >= 0) {
                                       requirements[index]['count'] = value;
                                     } else {
@@ -278,13 +289,14 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
                       ),
                     );
                   }).toList(),
-                  
+
                   if (preferenceManager.categories.isEmpty)
                     Center(
                       child: Column(
                         children: [
                           const SizedBox(height: 16),
-                          Icon(Icons.category_outlined, size: 48, color: Colors.grey[400]),
+                          Icon(Icons.category_outlined,
+                              size: 48, color: Colors.grey[400]),
                           const SizedBox(height: 16),
                           const Text(
                             'No event categories available. Please set up your preferences first.',
@@ -297,7 +309,8 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const PreferenceScreen(),
+                                  builder: (context) =>
+                                      const PreferenceScreen(),
                                 ),
                               );
                             },
@@ -322,23 +335,24 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
                         final validRequirements = requirements
                             .where((r) => (r['count'] as int) > 0)
                             .toList();
-                        
+
                         if (validRequirements.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Please specify at least one event requirement'),
+                              content: Text(
+                                  'Please specify at least one event requirement'),
                             ),
                           );
                           return;
                         }
-                        
+
                         // Generate schedule and show results
                         _generateAndShowSchedule(
                           startDate,
                           endDate,
                           validRequirements,
                         );
-                        
+
                         Navigator.pop(context);
                       },
                 child: const Text('Generate'),
@@ -349,23 +363,24 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
       ),
     );
   }
-  
+
   void _generateAndShowSchedule(
     DateTime startDate,
     DateTime endDate,
     List<Map<String, dynamic>> requirements,
   ) async {
     // Get the current user and preference manager
-    final preferenceManager = Provider.of<UserPreferenceManager>(context, listen: false);
+    final preferenceManager =
+        Provider.of<UserPreferenceManager>(context, listen: false);
     final user = preferenceManager.currentUser;
-    
+
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('User profile not found')),
       );
       return;
     }
-    
+
     // Show loading indicator
     showDialog(
       context: context,
@@ -374,7 +389,7 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
         child: CircularProgressIndicator(),
       ),
     );
-    
+
     // Generate the schedule using the recommendation service
     final recommendationService = ScheduleRecommendationService();
     final suggestedEvents = await recommendationService.suggestSchedule(
@@ -383,17 +398,18 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
       startDate: startDate,
       endDate: endDate,
     );
-    
+
     // Hide loading indicator
     Navigator.pop(context);
-    
+
     // Show the suggested schedule
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            const Icon(Icons.auto_awesome, color: ThemeProvider.notionBlue, size: 20),
+            const Icon(Icons.auto_awesome,
+                color: ThemeProvider.notionBlue, size: 20),
             const SizedBox(width: 8),
             const Text('AI Suggested Schedule'),
           ],
@@ -442,19 +458,21 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
             child: const Text('Close'),
           ),
           TextButton(
-            onPressed: suggestedEvents.isEmpty 
+            onPressed: suggestedEvents.isEmpty
                 ? null
                 : () {
                     // Add the suggested events to the calendar
-                    final eventManager = Provider.of<EventManager>(context, listen: false);
+                    final eventManager =
+                        Provider.of<EventManager>(context, listen: false);
                     for (final event in suggestedEvents) {
                       eventManager.addEvent(event);
                     }
-                    
+
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('${suggestedEvents.length} events added to your schedule'),
+                        content: Text(
+                            '${suggestedEvents.length} events added to your schedule'),
                         backgroundColor: ThemeProvider.notionBlue,
                       ),
                     );
@@ -1272,7 +1290,7 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: eventsAtThisHour.map((event) {
                                   final isDarkMode =
-                                      Theme.of(context).brightness == 
+                                      Theme.of(context).brightness ==
                                           Brightness.dark;
 
                                   return GestureDetector(
@@ -1440,11 +1458,11 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
   Widget _buildEventBadge(Event event, bool isDarkMode) {
     // Check if this is an AI-suggested event by looking at the ID prefix
     final isAISuggested = event.id.startsWith('suggested_');
-    
+
     if (!isAISuggested) {
       return const SizedBox.shrink();
     }
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       margin: const EdgeInsets.only(left: 8),

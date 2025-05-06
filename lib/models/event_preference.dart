@@ -59,7 +59,8 @@ class EventPreference {
       categoryColor: categoryColor ?? this.categoryColor,
       categoryName: categoryName ?? this.categoryName,
       preferenceScore: preferenceScore ?? this.preferenceScore,
-      averageHourPreference: averageHourPreference ?? this.averageHourPreference,
+      averageHourPreference:
+          averageHourPreference ?? this.averageHourPreference,
       preferredDaysOfWeek: preferredDaysOfWeek ?? this.preferredDaysOfWeek,
     );
   }

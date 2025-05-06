@@ -70,11 +70,11 @@ class _EventFormScreenState extends State<EventFormScreen> {
       _selectedColor = widget.event!.color;
       _isAllDay = widget.event!.isAllDay;
       _recurrenceRule = widget.event!.recurrenceRule;
-      
+
       // Check if this is a past event and was AI-suggested
       final isCompleted = widget.event!.endTime.isBefore(DateTime.now());
       final isAISuggested = widget.event!.id.startsWith('suggested_');
-      
+
       // If this is a completed AI-suggested event, show the feedback dialog
       if (isCompleted && isAISuggested) {
         // Use a slight delay to let the screen load first
@@ -204,35 +204,31 @@ class _EventFormScreenState extends State<EventFormScreen> {
 
       try {
         // Create start and end DateTime objects
-        final startDateTime =
-            _isAllDay
-                ? DateTime(_startDate.year, _startDate.month, _startDate.day)
-                : _combineDateAndTime(_startDate, _startTime);
+        final startDateTime = _isAllDay
+            ? DateTime(_startDate.year, _startDate.month, _startDate.day)
+            : _combineDateAndTime(_startDate, _startTime);
 
-        final endDateTime =
-            _isAllDay
-                ? DateTime(
-                  _endDate.year,
-                  _endDate.month,
-                  _endDate.day,
-                  23,
-                  59,
-                  59,
-                )
-                : _combineDateAndTime(_endDate, _endTime);
+        final endDateTime = _isAllDay
+            ? DateTime(
+                _endDate.year,
+                _endDate.month,
+                _endDate.day,
+                23,
+                59,
+                59,
+              )
+            : _combineDateAndTime(_endDate, _endTime);
 
         // Parse attendees from comma-separated string
-        final attendees =
-            _attendeesController.text.isEmpty
-                ? <String>[]
-                : _attendeesController.text
-                    .split(',')
-                    .map((e) => e.trim())
-                    .toList();
+        final attendees = _attendeesController.text.isEmpty
+            ? <String>[]
+            : _attendeesController.text
+                .split(',')
+                .map((e) => e.trim())
+                .toList();
 
         // Create new event or update existing one
-        final event =
-            widget.event?.copyWith(
+        final event = widget.event?.copyWith(
               title: _titleController.text,
               description: _descriptionController.text,
               startTime: startDateTime,
@@ -259,10 +255,9 @@ class _EventFormScreenState extends State<EventFormScreen> {
             );
 
         // Save event to backend via API
-        final ApiResponse response =
-            widget.event == null
-                ? await _eventService.createEvent(event)
-                : await _eventService.updateEvent(event);
+        final ApiResponse response = widget.event == null
+            ? await _eventService.createEvent(event)
+            : await _eventService.updateEvent(event);
 
         // Handle API response
         if (response.success) {
@@ -359,7 +354,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
     double timeAccuracy = 0.5;
     double dayAccuracy = 0.5;
     double categoryAccuracy = 0.5;
-    
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -367,9 +362,11 @@ class _EventFormScreenState extends State<EventFormScreen> {
           return AlertDialog(
             title: Row(
               children: [
-                const Icon(Icons.auto_awesome, color: ThemeProvider.notionBlue, size: 20),
+                const Icon(Icons.auto_awesome,
+                    color: ThemeProvider.notionBlue, size: 20),
                 const SizedBox(width: 8),
-                Text('How was this AI suggestion?', style: TextStyle(fontSize: 18)),
+                Text('How was this AI suggestion?',
+                    style: TextStyle(fontSize: 18)),
               ],
             ),
             content: SingleChildScrollView(
@@ -382,7 +379,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
                     style: TextStyle(fontSize: 14),
                   ),
                   const SizedBox(height: 20),
-                  
+
                   // Time accuracy
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -415,7 +412,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Day accuracy
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -448,7 +445,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Category accuracy
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -497,12 +494,13 @@ class _EventFormScreenState extends State<EventFormScreen> {
                     'dayAccuracy': dayAccuracy,
                     'categoryAccuracy': categoryAccuracy,
                   });
-                  
+
                   Navigator.of(context).pop();
-                  
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Thank you for your feedback! Our AI will use it to improve.'),
+                      content: Text(
+                          'Thank you for your feedback! Our AI will use it to improve.'),
                       backgroundColor: ThemeProvider.notionBlue,
                     ),
                   );
@@ -515,7 +513,7 @@ class _EventFormScreenState extends State<EventFormScreen> {
       ),
     );
   }
-  
+
   String _getScoreLabel(double score) {
     if (score < 0.25) {
       return 'Poor';
@@ -547,27 +545,27 @@ class _EventFormScreenState extends State<EventFormScreen> {
         actions: [
           _isSaving
               ? Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: ThemeProvider.notionBlue,
+                  padding: const EdgeInsets.all(16.0),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: ThemeProvider.notionBlue,
+                    ),
                   ),
-                ),
-              )
+                )
               : TextButton(
-                onPressed: _saveEvent,
-                child: Text(
-                  'Save',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: ThemeProvider.notionBlue,
+                  onPressed: _saveEvent,
+                  child: Text(
+                    'Save',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: ThemeProvider.notionBlue,
+                    ),
                   ),
                 ),
-              ),
         ],
         elevation: 0,
         centerTitle: false,
@@ -607,10 +605,9 @@ class _EventFormScreenState extends State<EventFormScreen> {
             // All Day Toggle
             Container(
               decoration: BoxDecoration(
-                color:
-                    isDarkMode
-                        ? ThemeProvider.notionDarkGray
-                        : Colors.grey[100],
+                color: isDarkMode
+                    ? ThemeProvider.notionDarkGray
+                    : Colors.grey[100],
                 borderRadius: BorderRadius.circular(4),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -645,10 +642,9 @@ class _EventFormScreenState extends State<EventFormScreen> {
               onTap: () => _selectDate(context, true),
               child: Container(
                 decoration: BoxDecoration(
-                  color:
-                      isDarkMode
-                          ? ThemeProvider.notionDarkGray
-                          : Colors.grey[100],
+                  color: isDarkMode
+                      ? ThemeProvider.notionDarkGray
+                      : Colors.grey[100],
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(4),
                     topRight: Radius.circular(4),
@@ -670,10 +666,9 @@ class _EventFormScreenState extends State<EventFormScreen> {
                       'Start: ${dateFormat.format(_startDate)}',
                       style: TextStyle(
                         fontSize: 15,
-                        color:
-                            isDarkMode
-                                ? Colors.white
-                                : ThemeProvider.notionBlack,
+                        color: isDarkMode
+                            ? Colors.white
+                            : ThemeProvider.notionBlack,
                       ),
                     ),
                   ],
@@ -688,10 +683,9 @@ class _EventFormScreenState extends State<EventFormScreen> {
                 onTap: () => _selectTime(context, true),
                 child: Container(
                   decoration: BoxDecoration(
-                    color:
-                        isDarkMode
-                            ? ThemeProvider.notionDarkGray
-                            : Colors.grey[100],
+                    color: isDarkMode
+                        ? ThemeProvider.notionDarkGray
+                        : Colors.grey[100],
                   ),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -709,10 +703,9 @@ class _EventFormScreenState extends State<EventFormScreen> {
                         'Time: ${_startTime.format(context)}',
                         style: TextStyle(
                           fontSize: 15,
-                          color:
-                              isDarkMode
-                                  ? Colors.white
-                                  : ThemeProvider.notionBlack,
+                          color: isDarkMode
+                              ? Colors.white
+                              : ThemeProvider.notionBlack,
                         ),
                       ),
                     ],
@@ -727,10 +720,9 @@ class _EventFormScreenState extends State<EventFormScreen> {
               onTap: () => _selectDate(context, false),
               child: Container(
                 decoration: BoxDecoration(
-                  color:
-                      isDarkMode
-                          ? ThemeProvider.notionDarkGray
-                          : Colors.grey[100],
+                  color: isDarkMode
+                      ? ThemeProvider.notionDarkGray
+                      : Colors.grey[100],
                 ),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -748,10 +740,9 @@ class _EventFormScreenState extends State<EventFormScreen> {
                       'End: ${dateFormat.format(_endDate)}',
                       style: TextStyle(
                         fontSize: 15,
-                        color:
-                            isDarkMode
-                                ? Colors.white
-                                : ThemeProvider.notionBlack,
+                        color: isDarkMode
+                            ? Colors.white
+                            : ThemeProvider.notionBlack,
                       ),
                     ),
                   ],
@@ -767,10 +758,9 @@ class _EventFormScreenState extends State<EventFormScreen> {
                     onTap: () => _selectTime(context, false),
                     child: Container(
                       decoration: BoxDecoration(
-                        color:
-                            isDarkMode
-                                ? ThemeProvider.notionDarkGray
-                                : Colors.grey[100],
+                        color: isDarkMode
+                            ? ThemeProvider.notionDarkGray
+                            : Colors.grey[100],
                         borderRadius: const BorderRadius.only(
                           bottomLeft: Radius.circular(4),
                           bottomRight: Radius.circular(4),
@@ -792,10 +782,9 @@ class _EventFormScreenState extends State<EventFormScreen> {
                             'Time: ${_endTime.format(context)}',
                             style: TextStyle(
                               fontSize: 15,
-                              color:
-                                  isDarkMode
-                                      ? Colors.white
-                                      : ThemeProvider.notionBlack,
+                              color: isDarkMode
+                                  ? Colors.white
+                                  : ThemeProvider.notionBlack,
                             ),
                           ),
                         ],
@@ -836,10 +825,9 @@ class _EventFormScreenState extends State<EventFormScreen> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color:
-                        isDarkMode
-                            ? ThemeProvider.notionGray
-                            : Colors.grey[700],
+                    color: isDarkMode
+                        ? ThemeProvider.notionGray
+                        : Colors.grey[700],
                   ),
                 ),
                 const SizedBox(height: 8.0),
@@ -866,31 +854,28 @@ class _EventFormScreenState extends State<EventFormScreen> {
                             color: color,
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color:
-                                  isSelected
-                                      ? Colors.white
-                                      : Colors.transparent,
+                              color: isSelected
+                                  ? Colors.white
+                                  : Colors.transparent,
                               width: 2,
                             ),
-                            boxShadow:
-                                isSelected
-                                    ? [
-                                      BoxShadow(
-                                        color: color.withOpacity(0.4),
-                                        blurRadius: 4,
-                                        spreadRadius: 1,
-                                      ),
-                                    ]
-                                    : null,
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: color.withOpacity(0.4),
+                                      blurRadius: 4,
+                                      spreadRadius: 1,
+                                    ),
+                                  ]
+                                : null,
                           ),
-                          child:
-                              isSelected
-                                  ? const Icon(
-                                    Icons.check,
-                                    color: Colors.white,
-                                    size: 18,
-                                  )
-                                  : null,
+                          child: isSelected
+                              ? const Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 18,
+                                )
+                              : null,
                         ),
                       );
                     },
@@ -910,19 +895,17 @@ class _EventFormScreenState extends State<EventFormScreen> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color:
-                        isDarkMode
-                            ? ThemeProvider.notionGray
-                            : Colors.grey[700],
+                    color: isDarkMode
+                        ? ThemeProvider.notionGray
+                        : Colors.grey[700],
                   ),
                 ),
                 const SizedBox(height: 8.0),
                 Container(
                   decoration: BoxDecoration(
-                    color:
-                        isDarkMode
-                            ? ThemeProvider.notionDarkGray
-                            : Colors.grey[100],
+                    color: isDarkMode
+                        ? ThemeProvider.notionDarkGray
+                        : Colors.grey[100],
                     borderRadius: BorderRadius.circular(4),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -933,22 +916,19 @@ class _EventFormScreenState extends State<EventFormScreen> {
                       icon: const Icon(Icons.arrow_drop_down),
                       style: TextStyle(
                         fontSize: 15,
-                        color:
-                            isDarkMode
-                                ? Colors.white
-                                : ThemeProvider.notionBlack,
+                        color: isDarkMode
+                            ? Colors.white
+                            : ThemeProvider.notionBlack,
                       ),
-                      dropdownColor:
-                          isDarkMode
-                              ? ThemeProvider.notionDarkGray
-                              : Colors.grey[100],
-                      items:
-                          _recurrenceOptions.map((String value) {
-                            return DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(value),
-                            );
-                          }).toList(),
+                      dropdownColor: isDarkMode
+                          ? ThemeProvider.notionDarkGray
+                          : Colors.grey[100],
+                      items: _recurrenceOptions.map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
                       onChanged: (String? newValue) {
                         setState(() {
                           _recurrenceRule = newValue;
