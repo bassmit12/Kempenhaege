@@ -11,10 +11,18 @@ import 'services/user_preference_manager.dart';
 import 'services/schedule_recommendation_service.dart';
 import 'models/event.dart';
 
-void main() {
-  // Initialize the schedule recommendation service
+void main() async {
+  // Ensure Flutter is initialized before doing any async work
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize the schedule recommendation service in the background
+  // without blocking app startup
   final recommendationService = ScheduleRecommendationService();
-  recommendationService.initializeNetwork();
+  // Don't wait for it to finish - let it initialize in the background
+  recommendationService.initializeNetwork().catchError((error) {
+    // Log the error but don't crash the app
+    print('Failed to initialize neural network: $error');
+  });
 
   runApp(
     MultiProvider(
@@ -22,6 +30,8 @@ void main() {
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
         ChangeNotifierProvider(create: (context) => EventManager()),
         ChangeNotifierProvider(create: (context) => UserPreferenceManager()),
+        // Add the recommendation service to the provider
+        Provider.value(value: recommendationService),
       ],
       child: const KempenhaegeScheduleApp(),
     ),

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart'; // Added import for Color class
 import 'package:http/http.dart' as http;
+import 'dart:async';
 import '../models/user.dart';
 import '../models/event.dart';
 import '../models/event_preference.dart';
@@ -10,12 +11,19 @@ import '../models/event_category.dart';
 class NeuralNetworkService {
   // API Endpoint - use localhost for development
   final String baseUrl = 'http://localhost:5000/api';
+  
+  // Default timeout duration for network requests
+  final Duration _timeout = const Duration(seconds: 5);
 
   /// Initialize the neural network and connection
   Future<bool> initialize() async {
     try {
-      // Check if the neural network API is running
-      final response = await http.get(Uri.parse('$baseUrl/health'));
+      // Check if the neural network API is running with a timeout
+      final response = await http.get(Uri.parse('$baseUrl/health'))
+          .timeout(_timeout, onTimeout: () {
+        print('Neural network API connection timed out');
+        return http.Response('{"status":"timeout"}', 408);
+      });
 
       if (response.statusCode == 200) {
         print('Neural network API is running');
@@ -25,6 +33,7 @@ class NeuralNetworkService {
         return false;
       }
     } catch (e) {
+      // Safely catch all exceptions to prevent app crashes
       print('Error connecting to neural network API: $e');
       return false;
     }
@@ -56,7 +65,10 @@ class NeuralNetworkService {
         Uri.parse('$baseUrl/preferences'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(data),
-      );
+      ).timeout(_timeout, onTimeout: () {
+        print('Update preferences request timed out');
+        return http.Response('{"status":"timeout"}', 408);
+      });
 
       if (response.statusCode == 200) {
         print('Preferences updated in neural network');
@@ -92,7 +104,10 @@ class NeuralNetworkService {
         Uri.parse('$baseUrl/feedback'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(data),
-      );
+      ).timeout(_timeout, onTimeout: () {
+        print('Submit feedback request timed out');
+        return http.Response('{"status":"timeout"}', 408);
+      });
 
       if (response.statusCode == 200) {
         print('Feedback submitted to neural network');
@@ -130,7 +145,10 @@ class NeuralNetworkService {
         Uri.parse('$baseUrl/feedback'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(data),
-      );
+      ).timeout(_timeout, onTimeout: () {
+        print('Update network weights request timed out');
+        return http.Response('{"status":"timeout"}', 408);
+      });
 
       if (response.statusCode == 200) {
         print('Neural network weights updated');
@@ -165,33 +183,49 @@ class NeuralNetworkService {
         Uri.parse('$baseUrl/recommend'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(data),
-      );
+      ).timeout(_timeout, onTimeout: () {
+        print('Suggest schedule request timed out');
+        return http.Response('{"recommendations": []}', 408);
+      });
 
       if (response.statusCode == 200) {
-        final result = json.decode(response.body);
+        final dynamic result = json.decode(response.body);
+        
+        // Handle case where the response doesn't contain recommendations
+        if (result == null || !result.containsKey('recommendations')) {
+          print('Invalid response format: missing recommendations key');
+          return [];
+        }
+        
         final recommendations = result['recommendations'] as List;
 
         // Convert recommendations to Event objects
         final events = <Event>[];
 
         for (var rec in recommendations) {
-          final time = DateTime.parse(rec['time']);
-          final endTime =
-              time.add(const Duration(hours: 1)); // Default 1-hour duration
+          try {
+            final time = DateTime.parse(rec['time']);
+            final endTime =
+                time.add(const Duration(hours: 1)); // Default 1-hour duration
 
-          events.add(Event(
-            id: rec['suggested_id'],
-            title:
-                '${rec['category_name']} - ${_formatWeekday(time.weekday)} at ${_formatTime(time)}',
-            description:
-                'AI suggested event with score: ${(rec['score'] * 100).toStringAsFixed(1)}%',
-            startTime: time,
-            endTime: endTime,
-            color: _hexToColor(rec['category_color']),
-            isAllDay: false,
-            location: '',
-            attendees: [],
-          ));
+            events.add(Event(
+              id: rec['suggested_id'] ?? 'suggested_${DateTime.now().millisecondsSinceEpoch}_${events.length}',
+              title:
+                  '${rec['category_name'] ?? 'Event'} - ${_formatWeekday(time.weekday)} at ${_formatTime(time)}',
+              description:
+                  'AI suggested event with score: ${((rec['score'] ?? 0.5) * 100).toStringAsFixed(1)}%',
+              startTime: time,
+              endTime: endTime,
+              color: _hexToColor(rec['category_color'] ?? '#4285F4'), // Default blue if no color
+              isAllDay: false,
+              location: '',
+              attendees: [],
+            ));
+          } catch (e) {
+            print('Error parsing recommendation: $e');
+            // Skip this recommendation and continue with others
+            continue;
+          }
         }
 
         return events;
@@ -211,11 +245,17 @@ class NeuralNetworkService {
   }
 
   Color _hexToColor(String hex) {
-    // Remove the hash if present
-    final hexCode = hex.startsWith('#') ? hex.substring(1) : hex;
+    try {
+      // Remove the hash if present
+      final hexCode = hex.startsWith('#') ? hex.substring(1) : hex;
 
-    // Parse the hex code
-    return Color(int.parse('FF$hexCode', radix: 16));
+      // Parse the hex code with error handling
+      return Color(int.parse('FF$hexCode', radix: 16));
+    } catch (e) {
+      print('Error parsing color hex: $e');
+      // Return a default color (blue) if parsing fails
+      return const Color(0xFF4285F4);
+    }
   }
 
   String _formatWeekday(int weekday) {
@@ -228,11 +268,13 @@ class NeuralNetworkService {
       'Saturday',
       'Sunday'
     ];
-    return days[weekday - 1]; // weekday is 1-7, array is 0-6
+    // Ensure weekday is in range 1-7
+    final safeWeekday = (weekday < 1 || weekday > 7) ? 1 : weekday;
+    return days[safeWeekday - 1]; // weekday is 1-7, array is 0-6
   }
 
   String _formatTime(DateTime time) {
-    final hour = time.hour > 12 ? time.hour - 12 : time.hour;
+    final hour = time.hour > 12 ? time.hour - 12 : (time.hour == 0 ? 12 : time.hour);
     final period = time.hour >= 12 ? 'PM' : 'AM';
     return '$hour:${time.minute.toString().padLeft(2, '0')} $period';
   }
