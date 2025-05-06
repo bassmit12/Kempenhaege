@@ -84,36 +84,34 @@ jobs:
           # Fix the build.gradle.kts file if needed
           if [ -f "android/build.gradle.kts" ]; then
             # Create simpler build.gradle file that's compatible with Flutter's expectations
-            cat > android/build.gradle << 'EOL'
-buildscript {
-    ext.kotlin_version = '1.9.22'
-    repositories {
-        google()
-        mavenCentral()
-    }
-
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.2.2'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-    }
-}
-
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-
-rootProject.buildDir = '../build'
-subprojects {
-    project.buildDir = "${rootProject.buildDir}/${project.name}"
-}
-
-task clean(type: Delete) {
-    delete rootProject.buildDir
-}
-EOL
+            echo 'buildscript {' > android/build.gradle
+            echo '    ext.kotlin_version = "1.9.22"' >> android/build.gradle
+            echo '    repositories {' >> android/build.gradle
+            echo '        google()' >> android/build.gradle
+            echo '        mavenCentral()' >> android/build.gradle
+            echo '    }' >> android/build.gradle
+            echo '' >> android/build.gradle
+            echo '    dependencies {' >> android/build.gradle
+            echo '        classpath "com.android.tools.build:gradle:8.2.2"' >> android/build.gradle
+            echo '        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"' >> android/build.gradle
+            echo '    }' >> android/build.gradle
+            echo '}' >> android/build.gradle
+            echo '' >> android/build.gradle
+            echo 'allprojects {' >> android/build.gradle
+            echo '    repositories {' >> android/build.gradle
+            echo '        google()' >> android/build.gradle
+            echo '        mavenCentral()' >> android/build.gradle
+            echo '    }' >> android/build.gradle
+            echo '}' >> android/build.gradle
+            echo '' >> android/build.gradle
+            echo 'rootProject.buildDir = "../build"' >> android/build.gradle
+            echo 'subprojects {' >> android/build.gradle
+            echo '    project.buildDir = "${rootProject.buildDir}/${project.name}"' >> android/build.gradle
+            echo '}' >> android/build.gradle
+            echo '' >> android/build.gradle
+            echo 'task clean(type: Delete) {' >> android/build.gradle
+            echo '    delete rootProject.buildDir' >> android/build.gradle
+            echo '}' >> android/build.gradle
             echo "Created compatible build.gradle file"
           fi
           
