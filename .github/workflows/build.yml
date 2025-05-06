@@ -140,31 +140,36 @@ jobs:
             
             # Add signing config block if it doesn't exist
             if ! grep -q "signingConfigs" android/app/build.gradle; then
-              cat <<EOT > android/app/build.gradle.new
-def keystoreProperties = new Properties()
-def keystorePropertiesFile = rootProject.file('key.properties')
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
-}
-
-$(cat android/app/build.gradle)
-
-android {
-    signingConfigs {
-        release {
-            keyAlias keystoreProperties['keyAlias']
-            keyPassword keystoreProperties['keyPassword']
-            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
-            storePassword keystoreProperties['storePassword']
-        }
-    }
-    buildTypes {
-        release {
-            signingConfig signingConfigs.release
-        }
-    }
-}
-EOT
+              # First create the properties section
+              echo 'def keystoreProperties = new Properties()' > android/app/build.gradle.new
+              echo 'def keystorePropertiesFile = rootProject.file("key.properties")' >> android/app/build.gradle.new
+              echo 'if (keystorePropertiesFile.exists()) {' >> android/app/build.gradle.new
+              echo '    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))' >> android/app/build.gradle.new
+              echo '}' >> android/app/build.gradle.new
+              echo '' >> android/app/build.gradle.new
+              
+              # Append the original build.gradle content
+              cat android/app/build.gradle >> android/app/build.gradle.new
+              
+              # Append the signing configuration
+              echo '' >> android/app/build.gradle.new
+              echo 'android {' >> android/app/build.gradle.new
+              echo '    signingConfigs {' >> android/app/build.gradle.new
+              echo '        release {' >> android/app/build.gradle.new
+              echo '            keyAlias keystoreProperties["keyAlias"]' >> android/app/build.gradle.new
+              echo '            keyPassword keystoreProperties["keyPassword"]' >> android/app/build.gradle.new
+              echo '            storeFile keystoreProperties["storeFile"] ? file(keystoreProperties["storeFile"]) : null' >> android/app/build.gradle.new
+              echo '            storePassword keystoreProperties["storePassword"]' >> android/app/build.gradle.new
+              echo '        }' >> android/app/build.gradle.new
+              echo '    }' >> android/app/build.gradle.new
+              echo '    buildTypes {' >> android/app/build.gradle.new
+              echo '        release {' >> android/app/build.gradle.new
+              echo '            signingConfig signingConfigs.release' >> android/app/build.gradle.new
+              echo '        }' >> android/app/build.gradle.new
+              echo '    }' >> android/app/build.gradle.new
+              echo '}' >> android/app/build.gradle.new
+              
+              # Replace the original with the new file
               mv android/app/build.gradle.new android/app/build.gradle
             fi
           else
