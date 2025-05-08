@@ -171,6 +171,93 @@ class _AdminScreenState extends State<AdminScreen> {
     }
   }
 
+  // Create next month schedule for the first month without events
+  Future<void> _createNextMonthSchedule() async {
+    setState(() {
+      _isLoading = true;
+      _statusMessage = 'Finding next month without events...';
+      _isSuccess = false;
+    });
+
+    try {
+      // First, we need to check each month starting from next month until we find one without events
+      final response = await http.get(
+        Uri.parse('http://192.168.178.109:3000/api/admin/find-empty-month'),
+      );
+
+      if (response.statusCode != 200) {
+        setState(() {
+          _isLoading = false;
+          _statusMessage = 'Error finding empty month: ${response.body}';
+          _isSuccess = false;
+        });
+        return;
+      }
+
+      final result = jsonDecode(response.body);
+      final targetMonth = result['month'];
+      final targetYear = result['year'];
+
+      setState(() {
+        _statusMessage =
+            'Creating schedule for ${_getMonthName(targetMonth)} $targetYear...';
+      });
+
+      // Calculate date range for the target month
+      final startDate = DateTime(targetYear, targetMonth, 1);
+      final lastDayOfMonth = DateTime(targetYear, targetMonth + 1, 0);
+
+      final data = {
+        'start_date': startDate.toIso8601String(),
+        'end_date': lastDayOfMonth.toIso8601String(),
+      };
+
+      final scheduleResponse = await http.post(
+        Uri.parse('http://192.168.178.109:5000/api/schedule/create-month'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+
+      setState(() {
+        _isLoading = false;
+        if (scheduleResponse.statusCode == 200) {
+          final scheduleResult = jsonDecode(scheduleResponse.body);
+          _statusMessage =
+              'Schedule for ${_getMonthName(targetMonth)} $targetYear created successfully! ${scheduleResult['created_events'] ?? 0} events generated.';
+          _isSuccess = true;
+        } else {
+          _statusMessage = 'Error creating schedule: ${scheduleResponse.body}';
+          _isSuccess = false;
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _statusMessage = 'Network error: $e';
+        _isSuccess = false;
+      });
+    }
+  }
+
+  // Helper to get month name
+  String _getMonthName(int month) {
+    const monthNames = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
+    ];
+    return monthNames[month - 1]; // Months are 1-indexed in our data
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -343,6 +430,26 @@ class _AdminScreenState extends State<AdminScreen> {
                               onPressed:
                                   _networkRunning ? _regenerateSchedule : null,
                               tooltip: 'Regenerate schedule',
+                              color: ThemeProvider.notionBlue,
+                            ),
+                          ),
+                          const Divider(),
+                          ListTile(
+                            leading: Icon(
+                              Icons.calendar_month,
+                              color: ThemeProvider.notionBlue,
+                            ),
+                            title: const Text('Create Next Month Schedule'),
+                            subtitle: const Text(
+                              'Generate a schedule for next month with AI-assigned attendees',
+                            ),
+                            contentPadding: EdgeInsets.zero,
+                            trailing: IconButton(
+                              icon: const Icon(Icons.play_arrow),
+                              onPressed: _networkRunning
+                                  ? _createNextMonthSchedule
+                                  : null,
+                              tooltip: 'Create next month schedule',
                               color: ThemeProvider.notionBlue,
                             ),
                           ),
