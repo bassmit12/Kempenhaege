@@ -4,10 +4,9 @@ import 'package:http/http.dart' as http;
 import '../models/event.dart';
 
 class ApiConfig {
-  // Change this to match your backend server address when running on a device
-  // Use 10.0.2.2 for Android emulator to access localhost
-  // Use localhost for web app
-  static const String baseUrl = 'http://10.0.2.2:3000/api';
+  // API server address configured for actual device connections
+  // Using the host machine's direct IP address for direct connection
+  static const String baseUrl = 'http://192.168.178.109:3000/api';
 }
 
 class ApiResponse<T> {

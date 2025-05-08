@@ -77,8 +77,3 @@ android {
 flutter {
     source = "../.."
 }
-
-dependencies {
-    // Add Play Core library for dynamic feature delivery support
-    implementation("com.google.android.play:core:1.10.3")
-}

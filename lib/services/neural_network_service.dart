@@ -9,9 +9,11 @@ import '../models/event_category.dart';
 
 /// Service for communicating with the Python neural network API
 class NeuralNetworkService {
-  // API Endpoint - use localhost for development
-  final String baseUrl = 'http://localhost:5000/api';
-  
+  // API Endpoint - using the developer machine's IP address
+  // This needs to be the actual IP address of the computer running the API
+  final String baseUrl =
+      'http://192.168.178.109:5000/api'; // Using your PC's IP address
+
   // Default timeout duration for network requests
   final Duration _timeout = const Duration(seconds: 5);
 
@@ -19,7 +21,8 @@ class NeuralNetworkService {
   Future<bool> initialize() async {
     try {
       // Check if the neural network API is running with a timeout
-      final response = await http.get(Uri.parse('$baseUrl/health'))
+      final response = await http
+          .get(Uri.parse('$baseUrl/health'))
           .timeout(_timeout, onTimeout: () {
         print('Neural network API connection timed out');
         return http.Response('{"status":"timeout"}', 408);
@@ -61,11 +64,13 @@ class NeuralNetworkService {
         'preferences': preferencesJson,
       };
 
-      final response = await http.post(
+      final response = await http
+          .post(
         Uri.parse('$baseUrl/preferences'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(data),
-      ).timeout(_timeout, onTimeout: () {
+      )
+          .timeout(_timeout, onTimeout: () {
         print('Update preferences request timed out');
         return http.Response('{"status":"timeout"}', 408);
       });
@@ -100,11 +105,13 @@ class NeuralNetworkService {
         'rating': rating,
       };
 
-      final response = await http.post(
+      final response = await http
+          .post(
         Uri.parse('$baseUrl/feedback'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(data),
-      ).timeout(_timeout, onTimeout: () {
+      )
+          .timeout(_timeout, onTimeout: () {
         print('Submit feedback request timed out');
         return http.Response('{"status":"timeout"}', 408);
       });
@@ -141,11 +148,13 @@ class NeuralNetworkService {
         'rating': combinedRating,
       };
 
-      final response = await http.post(
+      final response = await http
+          .post(
         Uri.parse('$baseUrl/feedback'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(data),
-      ).timeout(_timeout, onTimeout: () {
+      )
+          .timeout(_timeout, onTimeout: () {
         print('Update network weights request timed out');
         return http.Response('{"status":"timeout"}', 408);
       });
@@ -179,24 +188,26 @@ class NeuralNetworkService {
         'categories': requiredEvents,
       };
 
-      final response = await http.post(
+      final response = await http
+          .post(
         Uri.parse('$baseUrl/recommend'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(data),
-      ).timeout(_timeout, onTimeout: () {
+      )
+          .timeout(_timeout, onTimeout: () {
         print('Suggest schedule request timed out');
         return http.Response('{"recommendations": []}', 408);
       });
 
       if (response.statusCode == 200) {
         final dynamic result = json.decode(response.body);
-        
+
         // Handle case where the response doesn't contain recommendations
         if (result == null || !result.containsKey('recommendations')) {
           print('Invalid response format: missing recommendations key');
           return [];
         }
-        
+
         final recommendations = result['recommendations'] as List;
 
         // Convert recommendations to Event objects
@@ -209,14 +220,16 @@ class NeuralNetworkService {
                 time.add(const Duration(hours: 1)); // Default 1-hour duration
 
             events.add(Event(
-              id: rec['suggested_id'] ?? 'suggested_${DateTime.now().millisecondsSinceEpoch}_${events.length}',
+              id: rec['suggested_id'] ??
+                  'suggested_${DateTime.now().millisecondsSinceEpoch}_${events.length}',
               title:
                   '${rec['category_name'] ?? 'Event'} - ${_formatWeekday(time.weekday)} at ${_formatTime(time)}',
               description:
                   'AI suggested event with score: ${((rec['score'] ?? 0.5) * 100).toStringAsFixed(1)}%',
               startTime: time,
               endTime: endTime,
-              color: _hexToColor(rec['category_color'] ?? '#4285F4'), // Default blue if no color
+              color: _hexToColor(rec['category_color'] ??
+                  '#4285F4'), // Default blue if no color
               isAllDay: false,
               location: '',
               attendees: [],
@@ -274,7 +287,8 @@ class NeuralNetworkService {
   }
 
   String _formatTime(DateTime time) {
-    final hour = time.hour > 12 ? time.hour - 12 : (time.hour == 0 ? 12 : time.hour);
+    final hour =
+        time.hour > 12 ? time.hour - 12 : (time.hour == 0 ? 12 : time.hour);
     final period = time.hour >= 12 ? 'PM' : 'AM';
     return '$hour:${time.minute.toString().padLeft(2, '0')} $period';
   }

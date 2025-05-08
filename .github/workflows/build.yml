@@ -1,224 +1,173 @@
-name: "Flutter Build and Release"
+name: "Build and Release"
 
 on:
-  push:
-    branches: [ main, dev ]
   pull_request:
-    branches: [ main, dev ]
+    branches:
+      - dev
+      - main
+  push:
+    branches:
+      - dev
+      - main
   workflow_dispatch:
     inputs:
       create_release:
-        description: "Create release"
+        description: "Create a release"
         required: false
         default: true
         type: boolean
 
 permissions:
   contents: write
+  packages: write
+  actions: write
 
 jobs:
   build:
-    name: Build Flutter App
+    name: Build & Release
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
-      - name: Setup Java
+
+      - name: Set Up Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: 'gradle'
-      
-      - name: Setup Flutter
+          distribution: "temurin"
+          java-version: "17"
+          cache: gradle
+
+      - name: Set Up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.3'
-          channel: 'stable'
+          flutter-version: "3.19.3"
+          channel: "stable"
           cache: true
-      
+
       - name: Set Working Directory
         run: |
           if [ -d "frontend" ]; then
             echo "WORKDIR=frontend" >> $GITHUB_ENV
+            echo "ANDROID_DIR=frontend/android" >> $GITHUB_ENV
           else
             echo "WORKDIR=." >> $GITHUB_ENV
+            echo "ANDROID_DIR=android" >> $GITHUB_ENV
           fi
           echo "Working directory set to: ${{ env.WORKDIR }}"
-      
-      - name: Flutter Dependencies
+          echo "Android directory set to: ${{ env.ANDROID_DIR }}"
+
+      - name: Install Flutter Dependencies
         working-directory: ${{ env.WORKDIR }}
         run: flutter pub get
-      
-      - name: Fix Android Embedding Issue
+
+      - name: Regenerate Android project (Kotlin + Groovy DSL)
         working-directory: ${{ env.WORKDIR }}
         run: |
-          # Create a copy of the main AndroidManifest.xml in the android root directory
-          # This fixes the "No android/AndroidManifest.xml file" error
-          if [ -f "android/app/src/main/AndroidManifest.xml" ]; then
-            cp android/app/src/main/AndroidManifest.xml android/AndroidManifest.xml
-            echo "Created copy of AndroidManifest.xml in android root directory"
-          else
-            echo "Warning: Main AndroidManifest.xml not found!"
-          fi
-          
-          # Verify the Flutter embedding version
-          echo "Checking Flutter embedding version in AndroidManifest.xml..."
-          if grep -q 'android:name="flutterEmbedding" android:value="2"' android/app/src/main/AndroidManifest.xml; then
-            echo "Confirmed AndroidManifest.xml is using embedding v2"
-          else
-            echo "Adding Flutter embedding v2 metadata to AndroidManifest.xml"
-            sed -i '/<\/application>/i \        <meta-data android:name="flutterEmbedding" android:value="2" \/>' android/app/src/main/AndroidManifest.xml
-            cp android/app/src/main/AndroidManifest.xml android/AndroidManifest.xml
-          fi
-      
-      - name: Update Gradle Configuration
-        working-directory: ${{ env.WORKDIR }}
+          rm -rf android
+          flutter create --overwrite --project-name ai_scheduling_app --android-language kotlin .
+
+      - name: Setup Local Properties
         run: |
-          echo "Updating Gradle configuration for compatibility..."
-          
-          # Fix the build.gradle.kts file if needed
-          if [ -f "android/build.gradle.kts" ]; then
-            # Create simpler build.gradle file that's compatible with Flutter's expectations
-            echo 'buildscript {' > android/build.gradle
-            echo '    ext.kotlin_version = "1.9.22"' >> android/build.gradle
-            echo '    repositories {' >> android/build.gradle
-            echo '        google()' >> android/build.gradle
-            echo '        mavenCentral()' >> android/build.gradle
-            echo '    }' >> android/build.gradle
-            echo '' >> android/build.gradle
-            echo '    dependencies {' >> android/build.gradle
-            echo '        classpath "com.android.tools.build:gradle:8.2.2"' >> android/build.gradle
-            echo '        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"' >> android/build.gradle
-            echo '    }' >> android/build.gradle
-            echo '}' >> android/build.gradle
-            echo '' >> android/build.gradle
-            echo 'allprojects {' >> android/build.gradle
-            echo '    repositories {' >> android/build.gradle
-            echo '        google()' >> android/build.gradle
-            echo '        mavenCentral()' >> android/build.gradle
-            echo '    }' >> android/build.gradle
-            echo '}' >> android/build.gradle
-            echo '' >> android/build.gradle
-            echo 'rootProject.buildDir = "../build"' >> android/build.gradle
-            echo 'subprojects {' >> android/build.gradle
-            echo '    project.buildDir = "${rootProject.buildDir}/${project.name}"' >> android/build.gradle
-            echo '}' >> android/build.gradle
-            echo '' >> android/build.gradle
-            echo 'task clean(type: Delete) {' >> android/build.gradle
-            echo '    delete rootProject.buildDir' >> android/build.gradle
-            echo '}' >> android/build.gradle
-            echo "Created compatible build.gradle file"
-          fi
-          
-          # Update gradle-wrapper.properties to ensure it uses a compatible Gradle version
-          mkdir -p android/gradle/wrapper
-          echo "distributionBase=GRADLE_USER_HOME" > android/gradle/wrapper/gradle-wrapper.properties
-          echo "distributionPath=wrapper/dists" >> android/gradle/wrapper/gradle-wrapper.properties
-          echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.5-all.zip" >> android/gradle/wrapper/gradle-wrapper.properties
-          echo "zipStoreBase=GRADLE_USER_HOME" >> android/gradle/wrapper/gradle-wrapper.properties
-          echo "zipStorePath=wrapper/dists" >> android/gradle/wrapper/gradle-wrapper.properties
-          echo "Updated gradle-wrapper.properties"
-          
-          # Ensure gradle.properties has the correct settings
-          echo "org.gradle.jvmargs=-Xmx1536M -Dkotlin.daemon.jvm.options=\"-Xmx1536M\"" > android/gradle.properties
-          echo "android.useAndroidX=true" >> android/gradle.properties
-          echo "android.enableJetifier=true" >> android/gradle.properties
-          echo "android.nonTransitiveRClass=true" >> android/gradle.properties
-          echo "kotlin.code.style=official" >> android/gradle.properties
-          echo "Updated gradle.properties"
-          
-          # Update local.properties
-          echo "flutter.sdk=$FLUTTER_ROOT" > android/local.properties
-          echo "Updated local.properties with Flutter SDK path: $FLUTTER_ROOT"
-      
+          mkdir -p ${{ env.ANDROID_DIR }}
+          echo "flutter.sdk=$FLUTTER_HOME" > ${{ env.ANDROID_DIR }}/local.properties
+          echo "Created local.properties in ${{ env.ANDROID_DIR }}"
+
       - name: Setup Keystore
-        working-directory: ${{ env.WORKDIR }}
+        id: setup_keystore
         run: |
-          mkdir -p android/app/keystore
-          
-          # Use release keystore if available, or generate debug keystore
+          mkdir -p ${{ env.ANDROID_DIR }}/app
+
+          # Check if KEYSTORE_BASE64 secret exists
           if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore/release.keystore
-            echo "storeFile=keystore/release.keystore" > android/key.properties
-            echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
-            echo "storePassword=${{ secrets.STORE_PASSWORD }}" >> android/key.properties
-            echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
-            echo "Using release keystore"
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > ${{ env.ANDROID_DIR }}/app/keystore.jks
+            echo "storeFile=../app/keystore.jks" > ${{ env.ANDROID_DIR }}/key.properties
+            echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> ${{ env.ANDROID_DIR }}/key.properties
+            echo "storePassword=${{ secrets.STORE_PASSWORD }}" >> ${{ env.ANDROID_DIR }}/key.properties
+            echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> ${{ env.ANDROID_DIR }}/key.properties
+            echo "Using production keystore"
           else
-            keytool -genkeypair -v -keystore android/app/keystore/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-            echo "storeFile=keystore/debug.keystore" > android/key.properties
-            echo "keyAlias=androiddebugkey" >> android/key.properties
-            echo "storePassword=android" >> android/key.properties
-            echo "keyPassword=android" >> android/key.properties
+            # Generate debug keystore for testing
+            keytool -genkeypair -v -keystore ${{ env.ANDROID_DIR }}/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+            echo "storeFile=../app/debug.keystore" > ${{ env.ANDROID_DIR }}/key.properties
+            echo "keyAlias=androiddebugkey" >> ${{ env.ANDROID_DIR }}/key.properties
+            echo "storePassword=android" >> ${{ env.ANDROID_DIR }}/key.properties
+            echo "keyPassword=android" >> ${{ env.ANDROID_DIR }}/key.properties
             echo "Using debug keystore"
           fi
-      
-      - name: Add Play Core Dependency
+
+          # Verify key.properties file
+          echo "key.properties content:"
+          cat ${{ env.ANDROID_DIR }}/key.properties
+
+      - name: Add stub root AndroidManifest
         working-directory: ${{ env.WORKDIR }}
         run: |
-          if [ -f "android/app/build.gradle.kts" ]; then
-            # Simple file append for Kotlin DSL
-            grep -q "dependencies" "android/app/build.gradle.kts" || echo -e "\ndependencies {\n}" >> "android/app/build.gradle.kts"
-            sed -i '/dependencies {/a \    implementation("com.google.android.play:core:1.10.3")' "android/app/build.gradle.kts"
-            echo "Added Play Core dependency to build.gradle.kts"
-          elif [ -f "android/app/build.gradle" ]; then
-            # Simple file append for Groovy DSL
-            grep -q "dependencies" "android/app/build.gradle" || echo -e "\ndependencies {\n}" >> "android/app/build.gradle"
-            sed -i '/dependencies {/a \    implementation "com.google.android.play:core:1.10.3"' "android/app/build.gradle"
-            echo "Added Play Core dependency to build.gradle"
-          else
-            echo "Warning: Could not find build.gradle or build.gradle.kts file!"
-          fi
-      
+          cp android/app/src/main/AndroidManifest.xml android/AndroidManifest.xml
+
       - name: Build Debug APK
         working-directory: ${{ env.WORKDIR }}
-        run: flutter build apk --debug
-      
+        run: flutter build apk --debug --verbose
+
       - name: Build Release APK
         working-directory: ${{ env.WORKDIR }}
-        run: flutter build apk --release
-      
+        run: flutter build apk --release --verbose
+
       - name: Build App Bundle
         working-directory: ${{ env.WORKDIR }}
         run: flutter build appbundle --release
-      
-      - name: Upload Artifacts
+
+      - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: app-builds
           path: |
             ${{ env.WORKDIR }}/build/app/outputs/flutter-apk/app-release.apk
             ${{ env.WORKDIR }}/build/app/outputs/bundle/release/app-release.aab
-      
+
       - name: Extract Version
         id: version
         working-directory: ${{ env.WORKDIR }}
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | cut -d' ' -f2 | tr -d '\r')
           VERSION_NAME=$(echo $VERSION | cut -d'+' -f1)
-          echo "VERSION=$VERSION_NAME" >> $GITHUB_ENV
-          echo "Extracted version: $VERSION_NAME"
-      
-      - name: Create Release
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          echo "Extracted version: $VERSION_NAME (full: $VERSION)"
+
+      - name: Compute tag name
+        run: |
+          # Check if tag already exists on origin
+          if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION_NAME}"; then
+            NEW_TAG="v${VERSION_NAME}-${GITHUB_RUN_NUMBER}"
+          else
+            NEW_TAG="v${VERSION_NAME}"
+          fi
+          echo "Computed tag: $NEW_TAG"
+          echo "TAG_TO_USE=$NEW_TAG" >> $GITHUB_ENV
+
+      - name: Create GitHub Release
         if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.create_release == 'true'
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@v1.13.0
         with:
           artifacts: "${{ env.WORKDIR }}/build/app/outputs/flutter-apk/app-release.apk,${{ env.WORKDIR }}/build/app/outputs/bundle/release/app-release.aab"
-          tag: "v${{ env.VERSION }}"
-          name: "Release v${{ env.VERSION }}"
+          tag: ${{ env.TAG_TO_USE }}
+          name: "Kempenhaege Schedule ${{ env.TAG_TO_USE }}"
           body: |
-            Release version ${{ env.VERSION }}
-            
-            ### Changes in this version:
-            - Bug fixes and improvements
-            - Performance enhancements
-            
-            ### Installation:
-            Download and install the APK file directly on your Android device.
-          skipIfReleaseExists: true
+            Release of Kempenhaege Schedule version ${{ env.VERSION_NAME }}
+
+            ### What's New
+            - Latest features and improvements
+            - Bug fixes and performance enhancements
+
+            ### APK File
+            Download the APK file to install directly on Android devices
+
+            ### App Bundle
+            The AAB file is for Play Store submission
+          draft: false
+          prerelease: ${{ github.ref != 'refs/heads/main' }}
           token: ${{ secrets.GITHUB_TOKEN }}
+          skip_existing: true

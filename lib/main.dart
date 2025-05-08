@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'screens/event_form_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/preference_screen.dart';
+import 'screens/admin_screen.dart'; // Import the admin screen
 import 'theme/theme_provider.dart';
 import 'services/event_manager.dart';
 import 'services/user_preference_manager.dart';
@@ -14,7 +15,7 @@ import 'models/event.dart';
 void main() async {
   // Ensure Flutter is initialized before doing any async work
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize the schedule recommendation service in the background
   // without blocking app startup
   final recommendationService = ScheduleRecommendationService();
@@ -668,6 +669,20 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
                     );
                   },
                 ),
+                _buildNotionMenuItem(
+                  context,
+                  icon: Icons.admin_panel_settings,
+                  title: 'Admin Panel',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AdminScreen(),
+                      ),
+                    );
+                  },
+                ),
                 const SizedBox(height: 8),
                 Padding(
                   padding: const EdgeInsets.symmetric(
@@ -898,99 +913,118 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
       return events;
     }
 
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      child: TableCalendar(
-        firstDay: DateTime.utc(2020, 1, 1),
-        lastDay: DateTime.utc(2030, 12, 31),
-        focusedDay: focusedDay,
-        calendarFormat: CalendarFormat.month,
-        selectedDayPredicate: (day) {
-          return isSameDay(selectedDay, day);
-        },
-        onDaySelected: (selectedDay, focusedDay) {
-          setState(() {
-            _selectedDay = selectedDay;
-            _focusedDay = focusedDay;
-            // Switch to day view when a day is selected
-            _currentView = ViewType.day;
-          });
-        },
-        onPageChanged: (focusedDay) {
-          setState(() {
-            _focusedDay = focusedDay;
-          });
-        },
-        // Add event loader to display markers on days with events
-        eventLoader: getEventsForDay,
-        calendarStyle: CalendarStyle(
-          markersMaxCount: 3,
-          markerDecoration: const BoxDecoration(
-            color: ThemeProvider.notionBlue,
-            shape: BoxShape.circle,
+    return RefreshIndicator(
+      onRefresh: () async {
+        await Provider.of<EventManager>(context, listen: false).loadEvents();
+        // Optional: Show a success message
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Schedule refreshed'),
+            duration: Duration(seconds: 1),
+            behavior: SnackBarBehavior.floating,
           ),
-          markerSize: 7.0,
-          markersAlignment: Alignment.bottomCenter,
-          markerMargin: const EdgeInsets.only(top: 1.0),
-          isTodayHighlighted: true,
-          todayDecoration: BoxDecoration(
-            color: ThemeProvider.notionFaintBlue,
-            shape: BoxShape.rectangle,
-            borderRadius: BorderRadius.circular(3),
+        );
+      },
+      color: ThemeProvider.notionBlue,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Container(
+          padding: const EdgeInsets.all(16.0),
+          child: TableCalendar(
+            firstDay: DateTime.utc(2020, 1, 1),
+            lastDay: DateTime.utc(2030, 12, 31),
+            focusedDay: focusedDay,
+            calendarFormat: CalendarFormat.month,
+            selectedDayPredicate: (day) {
+              return isSameDay(selectedDay, day);
+            },
+            onDaySelected: (selectedDay, focusedDay) {
+              setState(() {
+                _selectedDay = selectedDay;
+                _focusedDay = focusedDay;
+                // Switch to day view when a day is selected
+                _currentView = ViewType.day;
+              });
+            },
+            onPageChanged: (focusedDay) {
+              setState(() {
+                _focusedDay = focusedDay;
+              });
+            },
+            // Add event loader to display markers on days with events
+            eventLoader: getEventsForDay,
+            calendarStyle: CalendarStyle(
+              markersMaxCount: 3,
+              markerDecoration: const BoxDecoration(
+                color: ThemeProvider.notionBlue,
+                shape: BoxShape.circle,
+              ),
+              markerSize: 7.0,
+              markersAlignment: Alignment.bottomCenter,
+              markerMargin: const EdgeInsets.only(top: 1.0),
+              isTodayHighlighted: true,
+              todayDecoration: BoxDecoration(
+                color: ThemeProvider.notionFaintBlue,
+                shape: BoxShape.rectangle,
+                borderRadius: BorderRadius.circular(3),
+              ),
+              todayTextStyle: const TextStyle(
+                color: ThemeProvider.notionBlack,
+                fontWeight: FontWeight.bold,
+              ),
+              selectedDecoration: BoxDecoration(
+                color: ThemeProvider.notionBlue.withOpacity(0.15),
+                shape: BoxShape.rectangle,
+                borderRadius: BorderRadius.circular(3),
+                border: Border.all(color: ThemeProvider.notionBlue, width: 1),
+              ),
+              selectedTextStyle: const TextStyle(
+                color: ThemeProvider.notionBlue,
+                fontWeight: FontWeight.bold,
+              ),
+              defaultDecoration: BoxDecoration(
+                shape: BoxShape.rectangle,
+                borderRadius: BorderRadius.circular(3),
+              ),
+              outsideDecoration: BoxDecoration(
+                shape: BoxShape.rectangle,
+                borderRadius: BorderRadius.circular(3),
+              ),
+              weekendDecoration: BoxDecoration(
+                shape: BoxShape.rectangle,
+                borderRadius: BorderRadius.circular(3),
+              ),
+              outsideDaysVisible: false,
+              cellMargin: const EdgeInsets.all(4),
+              cellPadding: const EdgeInsets.all(0),
+            ),
+            headerStyle: const HeaderStyle(
+              formatButtonVisible: false,
+              titleCentered: false,
+              leftChevronVisible: false,
+              rightChevronVisible: false,
+              headerPadding: EdgeInsets.only(bottom: 16),
+              titleTextStyle: TextStyle(
+                fontSize:
+                    0, // Hide the title as we're showing it in view selector
+              ),
+            ),
+            daysOfWeekStyle: const DaysOfWeekStyle(
+              weekdayStyle: TextStyle(
+                color: ThemeProvider.notionGray,
+                fontSize: 12,
+                fontWeight: FontWeight.normal,
+              ),
+              weekendStyle: TextStyle(
+                color: ThemeProvider.notionGray,
+                fontSize: 12,
+                fontWeight: FontWeight.normal,
+              ),
+            ),
+            rowHeight: 50,
           ),
-          todayTextStyle: const TextStyle(
-            color: ThemeProvider.notionBlack,
-            fontWeight: FontWeight.bold,
-          ),
-          selectedDecoration: BoxDecoration(
-            color: ThemeProvider.notionBlue.withOpacity(0.15),
-            shape: BoxShape.rectangle,
-            borderRadius: BorderRadius.circular(3),
-            border: Border.all(color: ThemeProvider.notionBlue, width: 1),
-          ),
-          selectedTextStyle: const TextStyle(
-            color: ThemeProvider.notionBlue,
-            fontWeight: FontWeight.bold,
-          ),
-          defaultDecoration: BoxDecoration(
-            shape: BoxShape.rectangle,
-            borderRadius: BorderRadius.circular(3),
-          ),
-          outsideDecoration: BoxDecoration(
-            shape: BoxShape.rectangle,
-            borderRadius: BorderRadius.circular(3),
-          ),
-          weekendDecoration: BoxDecoration(
-            shape: BoxShape.rectangle,
-            borderRadius: BorderRadius.circular(3),
-          ),
-          outsideDaysVisible: false,
-          cellMargin: const EdgeInsets.all(4),
-          cellPadding: const EdgeInsets.all(0),
         ),
-        headerStyle: const HeaderStyle(
-          formatButtonVisible: false,
-          titleCentered: false,
-          leftChevronVisible: false,
-          rightChevronVisible: false,
-          headerPadding: EdgeInsets.only(bottom: 16),
-          titleTextStyle: TextStyle(
-            fontSize: 0, // Hide the title as we're showing it in view selector
-          ),
-        ),
-        daysOfWeekStyle: const DaysOfWeekStyle(
-          weekdayStyle: TextStyle(
-            color: ThemeProvider.notionGray,
-            fontSize: 12,
-            fontWeight: FontWeight.normal,
-          ),
-          weekendStyle: TextStyle(
-            color: ThemeProvider.notionGray,
-            fontSize: 12,
-            fontWeight: FontWeight.normal,
-          ),
-        ),
-        rowHeight: 50,
       ),
     );
   }
@@ -1000,86 +1034,102 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
     DateTime focusedDay,
     DateTime? selectedDay,
   ) {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      child: TableCalendar(
-        firstDay: DateTime.utc(2020, 1, 1),
-        lastDay: DateTime.utc(2030, 12, 31),
-        focusedDay: focusedDay,
-        calendarFormat: CalendarFormat.week,
-        selectedDayPredicate: (day) {
-          return isSameDay(selectedDay, day);
-        },
-        onDaySelected: (selectedDay, focusedDay) {
-          setState(() {
-            _selectedDay = selectedDay;
-            _focusedDay = focusedDay;
-          });
-        },
-        onPageChanged: (focusedDay) {
-          setState(() {
-            _focusedDay = focusedDay;
-          });
-        },
-        calendarStyle: CalendarStyle(
-          markersMaxCount: 3,
-          isTodayHighlighted: true,
-          todayDecoration: BoxDecoration(
-            color: ThemeProvider.notionFaintBlue,
-            shape: BoxShape.rectangle,
-            borderRadius: BorderRadius.circular(3),
+    return RefreshIndicator(
+      onRefresh: () async {
+        await Provider.of<EventManager>(context, listen: false).loadEvents();
+        // Optional: Show a success message
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Schedule refreshed'),
+            duration: Duration(seconds: 1),
+            behavior: SnackBarBehavior.floating,
           ),
-          todayTextStyle: const TextStyle(
-            color: ThemeProvider.notionBlack,
-            fontWeight: FontWeight.bold,
+        );
+      },
+      color: ThemeProvider.notionBlue,
+      child: Container(
+        padding: const EdgeInsets.all(16.0),
+        child: TableCalendar(
+          firstDay: DateTime.utc(2020, 1, 1),
+          lastDay: DateTime.utc(2030, 12, 31),
+          focusedDay: focusedDay,
+          calendarFormat: CalendarFormat.week,
+          selectedDayPredicate: (day) {
+            return isSameDay(selectedDay, day);
+          },
+          onDaySelected: (selectedDay, focusedDay) {
+            setState(() {
+              _selectedDay = selectedDay;
+              _focusedDay = focusedDay;
+            });
+          },
+          onPageChanged: (focusedDay) {
+            setState(() {
+              _focusedDay = focusedDay;
+            });
+          },
+          calendarStyle: CalendarStyle(
+            markersMaxCount: 3,
+            isTodayHighlighted: true,
+            todayDecoration: BoxDecoration(
+              color: ThemeProvider.notionFaintBlue,
+              shape: BoxShape.rectangle,
+              borderRadius: BorderRadius.circular(3),
+            ),
+            todayTextStyle: const TextStyle(
+              color: ThemeProvider.notionBlack,
+              fontWeight: FontWeight.bold,
+            ),
+            selectedDecoration: BoxDecoration(
+              color: ThemeProvider.notionBlue.withOpacity(0.15),
+              shape: BoxShape.rectangle,
+              borderRadius: BorderRadius.circular(3),
+              border: Border.all(color: ThemeProvider.notionBlue, width: 1),
+            ),
+            selectedTextStyle: const TextStyle(
+              color: ThemeProvider.notionBlue,
+              fontWeight: FontWeight.bold,
+            ),
+            defaultDecoration: BoxDecoration(
+              shape: BoxShape.rectangle,
+              borderRadius: BorderRadius.circular(3),
+            ),
+            outsideDecoration: BoxDecoration(
+              shape: BoxShape.rectangle,
+              borderRadius: BorderRadius.circular(3),
+            ),
+            weekendDecoration: BoxDecoration(
+              shape: BoxShape.rectangle,
+              borderRadius: BorderRadius.circular(3),
+            ),
+            cellMargin: const EdgeInsets.all(4),
+            cellPadding: const EdgeInsets.all(4),
           ),
-          selectedDecoration: BoxDecoration(
-            color: ThemeProvider.notionBlue.withOpacity(0.15),
-            shape: BoxShape.rectangle,
-            borderRadius: BorderRadius.circular(3),
-            border: Border.all(color: ThemeProvider.notionBlue, width: 1),
+          headerStyle: const HeaderStyle(
+            formatButtonVisible: false,
+            titleCentered: false,
+            leftChevronVisible: false,
+            rightChevronVisible: false,
+            titleTextStyle: TextStyle(
+              fontSize:
+                  0, // Hide the title as we're showing it in view selector
+            ),
           ),
-          selectedTextStyle: const TextStyle(
-            color: ThemeProvider.notionBlue,
-            fontWeight: FontWeight.bold,
+          daysOfWeekStyle: const DaysOfWeekStyle(
+            weekdayStyle: TextStyle(
+              color: ThemeProvider.notionGray,
+              fontSize: 12,
+              fontWeight: FontWeight.normal,
+            ),
+            weekendStyle: TextStyle(
+              color: ThemeProvider.notionGray,
+              fontSize: 12,
+              fontWeight: FontWeight.normal,
+            ),
           ),
-          defaultDecoration: BoxDecoration(
-            shape: BoxShape.rectangle,
-            borderRadius: BorderRadius.circular(3),
-          ),
-          outsideDecoration: BoxDecoration(
-            shape: BoxShape.rectangle,
-            borderRadius: BorderRadius.circular(3),
-          ),
-          weekendDecoration: BoxDecoration(
-            shape: BoxShape.rectangle,
-            borderRadius: BorderRadius.circular(3),
-          ),
-          cellMargin: const EdgeInsets.all(4),
-          cellPadding: const EdgeInsets.all(4),
+          rowHeight: 60,
         ),
-        headerStyle: const HeaderStyle(
-          formatButtonVisible: false,
-          titleCentered: false,
-          leftChevronVisible: false,
-          rightChevronVisible: false,
-          titleTextStyle: TextStyle(
-            fontSize: 0, // Hide the title as we're showing it in view selector
-          ),
-        ),
-        daysOfWeekStyle: const DaysOfWeekStyle(
-          weekdayStyle: TextStyle(
-            color: ThemeProvider.notionGray,
-            fontSize: 12,
-            fontWeight: FontWeight.normal,
-          ),
-          weekendStyle: TextStyle(
-            color: ThemeProvider.notionGray,
-            fontSize: 12,
-            fontWeight: FontWeight.normal,
-          ),
-        ),
-        rowHeight: 60,
       ),
     );
   }
@@ -1138,7 +1188,25 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
           ),
         ),
         const Divider(height: 1),
-        Expanded(child: _buildTimeSlots(context, dayToShow)),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () async {
+              await Provider.of<EventManager>(context, listen: false)
+                  .loadEvents();
+              // Optional: Show a success message
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Schedule refreshed'),
+                  duration: Duration(seconds: 1),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            color: ThemeProvider.notionBlue,
+            child: _buildTimeSlots(context, dayToShow),
+          ),
+        ),
       ],
     );
   }
