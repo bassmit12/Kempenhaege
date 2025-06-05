@@ -67,6 +67,7 @@ class UserPreferenceManager extends ChangeNotifier {
         _currentUser = User(
           id: 'default_user',
           name: 'Default User',
+          username: 'default_user',
           email: 'user@example.com',
           role: 'Employee',
           preferences: [], // No preferences set yet

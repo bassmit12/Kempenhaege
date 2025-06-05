@@ -4,6 +4,7 @@ import 'event_preference.dart';
 class User {
   final String id;
   final String name;
+  final String username;
   final String email;
   final String role;
   final List<EventPreference> preferences;
@@ -11,6 +12,7 @@ class User {
   User({
     required this.id,
     required this.name,
+    required this.username,
     required this.email,
     required this.role,
     this.preferences = const [],
@@ -20,6 +22,7 @@ class User {
     return User(
       id: json['id'],
       name: json['name'],
+      username: json['username'] ?? '',
       email: json['email'],
       role: json['role'],
       preferences: json['preferences'] != null
@@ -34,6 +37,7 @@ class User {
     return {
       'id': id,
       'name': name,
+      'username': username,
       'email': email,
       'role': role,
       'preferences': preferences.map((pref) => pref.toJson()).toList(),
@@ -43,6 +47,7 @@ class User {
   User copyWith({
     String? id,
     String? name,
+    String? username,
     String? email,
     String? role,
     List<EventPreference>? preferences,
@@ -50,6 +55,7 @@ class User {
     return User(
       id: id ?? this.id,
       name: name ?? this.name,
+      username: username ?? this.username,
       email: email ?? this.email,
       role: role ?? this.role,
       preferences: preferences ?? this.preferences,

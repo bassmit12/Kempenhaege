@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../services/auth_service.dart';
 import '../theme/theme_provider.dart';
+import 'login_screen.dart';
 import 'preference_screen.dart';
+import 'calendar/schedule_home_page.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -10,17 +14,36 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final _nameController = TextEditingController(text: 'John Doe');
-  final _emailController = TextEditingController(text: 'johndoe@example.com');
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _phoneController = TextEditingController(text: '+31 6 12345678');
-  final _roleController = TextEditingController(text: 'Care Coordinator');
+  final _roleController = TextEditingController();
   final _bioController = TextEditingController(
     text:
         'Experienced care coordinator with a focus on patient-centered scheduling and care management.',
   );
+  final _usernameController = TextEditingController();
 
   final _formKey = GlobalKey<FormState>();
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Load user data into form
+    _loadUserData();
+  }
+
+  void _loadUserData() {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final user = authService.currentUser;
+    if (user != null) {
+      _nameController.text = user.name;
+      _emailController.text = user.email;
+      _roleController.text = user.role;
+      _usernameController.text = user.username;
+    }
+  }
 
   @override
   void dispose() {
@@ -29,11 +52,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _phoneController.dispose();
     _roleController.dispose();
     _bioController.dispose();
+    _usernameController.dispose();
     super.dispose();
   }
 
   Widget _buildProfileHeader() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final authService = Provider.of<AuthService>(context);
+    final user = authService.currentUser;
 
     return Container(
       padding: const EdgeInsets.all(24.0),
@@ -84,7 +110,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            _nameController.text,
+            user?.name ?? 'User',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -93,7 +119,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            _roleController.text,
+            user?.role ?? 'User',
             style: TextStyle(
               fontSize: 16,
               color: isDarkMode ? ThemeProvider.notionGray : Colors.grey[700],
@@ -112,6 +138,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     TextInputType keyboardType = TextInputType.text,
     bool autofocus = false,
     String? Function(String?)? validator,
+    bool readOnly = false,
   }) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
@@ -136,6 +163,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           autofocus: autofocus,
           keyboardType: keyboardType,
           validator: validator,
+          readOnly: readOnly,
           style: TextStyle(
             fontSize: maxLines > 1 ? 14 : 15,
             color: isDarkMode ? Colors.white : ThemeProvider.notionBlack,
@@ -294,9 +322,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  void _logout() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    await authService.logout();
+    
+    if (!mounted) return;
+    
+    // Navigate back to login screen
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (route) => false, // Remove all previous routes
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final authService = Provider.of<AuthService>(context);
+
+    // Redirect to login if not authenticated
+    if (!authService.isAuthenticated) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+        );
+      });
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -337,6 +391,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             _buildProfileHeader(),
             const SizedBox(height: 24),
+
+            // Account Information
+            _buildNotionCard(
+              title: 'Account Information',
+              children: [
+                _buildNotionTextField(
+                  controller: _usernameController,
+                  label: 'USERNAME',
+                  hint: 'Your username',
+                  readOnly: true, // Username can't be changed
+                ),
+              ],
+            ),
 
             // Personal Information
             _buildNotionCard(
@@ -462,13 +529,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               title: 'Security',
               children: [
                 _buildPreferenceTile(
-                  title: 'Change Password',
-                  subtitle: 'Update your password',
+                  title: 'Change Pincode',
+                  subtitle: 'Update your pincode',
                   icon: Icons.lock_outline,
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Password change coming soon'),
+                        content: Text('Pincode change coming soon'),
                       ),
                     );
                   },
@@ -494,13 +561,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Logout functionality coming soon'),
-                        ),
-                      );
-                    },
+                    onPressed: _logout,
                     icon: const Icon(Icons.logout),
                     label: const Text('Logout'),
                     style: OutlinedButton.styleFrom(
