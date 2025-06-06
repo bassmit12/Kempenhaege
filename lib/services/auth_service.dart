@@ -58,32 +58,36 @@ class AuthService extends ChangeNotifier {
     try {
       final file = await _getUsersFile();
       final exists = await file.exists();
-      
+
       debugPrint('Users file exists: $exists');
-      
+
       if (!exists) {
         debugPrint('Creating users file with sample data...');
         // Create sample users
-        final usersCredentials = _sampleUsers.map((user) => {
-          'username': user['username'],
-          'pincode': user['pincode'],
-        }).toList();
-        
+        final usersCredentials = _sampleUsers
+            .map((user) => {
+                  'username': user['username'],
+                  'pincode': user['pincode'],
+                })
+            .toList();
+
         // Create sample user data
-        final usersData = _sampleUsers.map((user) => {
-          'id': user['id'],
-          'name': user['name'],
-          'username': user['username'],
-          'email': user['email'],
-          'role': user['role'],
-          'preferences': [],
-        }).toList();
-        
+        final usersData = _sampleUsers
+            .map((user) => {
+                  'id': user['id'],
+                  'name': user['name'],
+                  'username': user['username'],
+                  'email': user['email'],
+                  'role': user['role'],
+                  'preferences': [],
+                })
+            .toList();
+
         final jsonData = {
           'credentials': usersCredentials,
           'users': usersData,
         };
-        
+
         // Convert to JSON string and write to file
         final jsonString = jsonEncode(jsonData);
         debugPrint('Writing JSON data to file: ${file.path}');
@@ -101,23 +105,23 @@ class AuthService extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedUserId = prefs.getString('userId');
-      
+
       debugPrint('Saved user ID: $savedUserId');
-      
+
       if (savedUserId != null) {
         // Try to load the user from the saved ID
         final users = await _loadUsers();
-        
+
         if (users.isEmpty) {
           debugPrint('No users found in storage');
           return;
         }
-        
+
         final savedUser = users.firstWhere(
           (user) => user['id'] == savedUserId,
           orElse: () => {},
         );
-        
+
         if (savedUser.isNotEmpty) {
           debugPrint('Restoring user session for ID: $savedUserId');
           _currentUser = User.fromJson(savedUser);
@@ -139,14 +143,14 @@ class AuthService extends ChangeNotifier {
   Future<File> _getUsersFile() async {
     try {
       Directory directory;
-      
+
       if (Platform.isAndroid || Platform.isIOS) {
         directory = await getApplicationDocumentsDirectory();
       } else {
         // For desktop platforms, use the app support directory
         directory = await getApplicationSupportDirectory();
       }
-      
+
       final filePath = '${directory.path}/users.json';
       debugPrint('Users file path: $filePath');
       return File(filePath);
@@ -160,27 +164,27 @@ class AuthService extends ChangeNotifier {
     try {
       final file = await _getUsersFile();
       final exists = await file.exists();
-      
+
       if (!exists) {
         debugPrint('Users file does not exist');
         return [];
       }
-      
+
       debugPrint('Reading users from file...');
       final jsonString = await file.readAsString();
-      
+
       if (jsonString.isEmpty) {
         debugPrint('Users file is empty');
         return [];
       }
-      
+
       final data = jsonDecode(jsonString);
-      
+
       if (data == null || !data.containsKey('users')) {
         debugPrint('Invalid JSON format or missing users key');
         return [];
       }
-      
+
       final users = List<Map<String, dynamic>>.from(data['users']);
       debugPrint('Loaded ${users.length} users');
       return users;
@@ -196,27 +200,27 @@ class AuthService extends ChangeNotifier {
     try {
       final file = await _getUsersFile();
       final exists = await file.exists();
-      
+
       if (!exists) {
         debugPrint('Users file does not exist');
         return [];
       }
-      
+
       debugPrint('Reading credentials from file...');
       final jsonString = await file.readAsString();
-      
+
       if (jsonString.isEmpty) {
         debugPrint('Users file is empty');
         return [];
       }
-      
+
       final data = jsonDecode(jsonString);
-      
+
       if (data == null || !data.containsKey('credentials')) {
         debugPrint('Invalid JSON format or missing credentials key');
         return [];
       }
-      
+
       final credentials = List<Map<String, dynamic>>.from(data['credentials']);
       debugPrint('Loaded ${credentials.length} credentials');
       return credentials;
@@ -232,22 +236,23 @@ class AuthService extends ChangeNotifier {
     _isLoading = true;
     _error = null;
     notifyListeners();
-    
+
     try {
       debugPrint('Attempting login with username: $username');
-      
+
       // Get credentials and users
       final credentials = await _loadCredentials();
       final users = await _loadUsers();
-      
-      debugPrint('Loaded ${credentials.length} credentials and ${users.length} users');
-      
+
+      debugPrint(
+          'Loaded ${credentials.length} credentials and ${users.length} users');
+
       // Find matching credentials
       final userCredential = credentials.firstWhere(
         (cred) => cred['username'] == username && cred['pincode'] == pincode,
         orElse: () => {},
       );
-      
+
       if (userCredential.isEmpty) {
         debugPrint('Invalid username or pincode');
         _error = 'Invalid username or pincode';
@@ -255,15 +260,15 @@ class AuthService extends ChangeNotifier {
         notifyListeners();
         return false;
       }
-      
+
       debugPrint('Found matching credentials for username: $username');
-      
+
       // Find matching user data
       final userData = users.firstWhere(
         (user) => user['username'] == username,
         orElse: () => {},
       );
-      
+
       if (userData.isEmpty) {
         debugPrint('User data not found for username: $username');
         _error = 'User data not found';
@@ -271,18 +276,18 @@ class AuthService extends ChangeNotifier {
         notifyListeners();
         return false;
       }
-      
+
       debugPrint('Found user data for username: $username');
-      
+
       // Set current user
       _currentUser = User.fromJson(userData);
-      
+
       debugPrint('User loaded successfully: ${_currentUser!.name}');
-      
+
       // Save login state
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('userId', _currentUser!.id);
-      
+
       debugPrint('Login successful');
       _isLoading = false;
       notifyListeners();

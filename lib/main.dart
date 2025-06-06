@@ -52,7 +52,9 @@ class KempenhaegeScheduleApp extends StatelessWidget {
       theme: themeProvider.lightTheme,
       darkTheme: themeProvider.darkTheme,
       themeMode: themeProvider.themeMode,
-      home: authService.isAuthenticated ? const ScheduleHomePage() : const LoginScreen(),
+      home: authService.isAuthenticated
+          ? const ScheduleHomePage()
+          : const LoginScreen(),
     );
   }
 }

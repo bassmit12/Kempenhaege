@@ -140,19 +140,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Logo and Title
                     Column(
                       children: [
-                        // App Logo
-                        Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            color: ThemeProvider.notionBlue.withOpacity(0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.calendar_today,
-                            size: 48,
-                            color: ThemeProvider.notionBlue,
-                          ),
+                        // Kempenhaege Logo
+                        Image.asset(
+                          'assets/logo/Kempenhaeghe_logo.png',
+                          width: 180,
+                          height: 80,
+                          fit: BoxFit.contain,
                         ),
                         const SizedBox(height: 24),
                         Text(
@@ -187,7 +180,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         decoration: BoxDecoration(
                           color: Colors.red.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.red.withOpacity(0.3)),
+                          border:
+                              Border.all(color: Colors.red.withOpacity(0.3)),
                         ),
                         child: Row(
                           children: [
@@ -236,7 +230,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           _obscurePincode
                               ? Icons.visibility_off
                               : Icons.visibility,
-                          color: isDarkMode ? Colors.grey[600] : Colors.grey[400],
+                          color:
+                              isDarkMode ? Colors.grey[600] : Colors.grey[400],
                         ),
                         onPressed: _togglePincodeVisibility,
                       ),

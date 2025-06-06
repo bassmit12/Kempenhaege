@@ -325,9 +325,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _logout() async {
     final authService = Provider.of<AuthService>(context, listen: false);
     await authService.logout();
-    
+
     if (!mounted) return;
-    
+
     // Navigate back to login screen
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => const LoginScreen()),
