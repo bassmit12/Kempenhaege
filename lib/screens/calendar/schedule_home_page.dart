@@ -164,32 +164,46 @@ class _ScheduleHomePageState extends State<ScheduleHomePage> {
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
           const Spacer(),
-          SegmentedButton<ViewType>(
-            segments: const [
-              ButtonSegment<ViewType>(value: ViewType.day, label: Text('Day')),
-              ButtonSegment<ViewType>(
-                value: ViewType.week,
-                label: Text('Week'),
+          SizedBox(
+            width: 240, // Fixed width for the segmented button
+            child: SegmentedButton<ViewType>(
+              segments: const [
+                ButtonSegment<ViewType>(
+                  value: ViewType.day,
+                  label: Text('Day'),
+                ),
+                ButtonSegment<ViewType>(
+                  value: ViewType.week,
+                  label: Text('Week'),
+                ),
+                ButtonSegment<ViewType>(
+                  value: ViewType.month,
+                  label: Text('Month'),
+                ),
+              ],
+              selected: {_currentView},
+              onSelectionChanged: (Set<ViewType> selection) {
+                setState(() {
+                  _currentView = selection.first;
+                  if (_currentView == ViewType.week) {
+                    _calendarFormat = CalendarFormat.week;
+                  } else if (_currentView == ViewType.month) {
+                    _calendarFormat = CalendarFormat.month;
+                  }
+                });
+              },
+              style: ButtonStyle(
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: const VisualDensity(horizontal: 0, vertical: 0),
+                padding: const MaterialStatePropertyAll<EdgeInsets>(
+                    EdgeInsets.symmetric(horizontal: 4)),
+                // Set a fixed width for each segment
+                fixedSize: MaterialStatePropertyAll<Size>(Size(70, 36)),
+                // Add specific styles for the checkmark icon
+                iconSize: const MaterialStatePropertyAll<double>(16.0),
+                iconColor:
+                    MaterialStatePropertyAll<Color>(ThemeProvider.notionBlue),
               ),
-              ButtonSegment<ViewType>(
-                value: ViewType.month,
-                label: Text('Month'),
-              ),
-            ],
-            selected: {_currentView},
-            onSelectionChanged: (Set<ViewType> selection) {
-              setState(() {
-                _currentView = selection.first;
-                if (_currentView == ViewType.week) {
-                  _calendarFormat = CalendarFormat.week;
-                } else if (_currentView == ViewType.month) {
-                  _calendarFormat = CalendarFormat.month;
-                }
-              });
-            },
-            style: const ButtonStyle(
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              visualDensity: VisualDensity(horizontal: -1, vertical: -1),
             ),
           ),
         ],

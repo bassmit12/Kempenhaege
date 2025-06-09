@@ -82,10 +82,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: Center(
-                  child: Icon(
-                    Icons.person,
-                    size: 60,
-                    color: ThemeProvider.notionBlue,
+                  child: Text(
+                    user?.name.isNotEmpty == true
+                        ? user!.name.substring(0, 1).toUpperCase()
+                        : "U",
+                    style: TextStyle(
+                      fontSize: 40,
+                      fontWeight: FontWeight.bold,
+                      color: ThemeProvider.notionBlue,
+                    ),
                   ),
                 ),
               ),
@@ -125,6 +130,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: isDarkMode ? ThemeProvider.notionGray : Colors.grey[700],
             ),
           ),
+          if (user?.email != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              user!.email,
+              style: TextStyle(
+                fontSize: 14,
+                color: isDarkMode ? ThemeProvider.notionGray : Colors.grey[700],
+              ),
+            ),
+          ],
         ],
       ),
     );

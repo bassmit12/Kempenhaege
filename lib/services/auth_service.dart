@@ -320,4 +320,9 @@ class AuthService extends ChangeNotifier {
     _error = null;
     notifyListeners();
   }
+
+  // Method to get users for login screen
+  Future<List<Map<String, dynamic>>> getUsers() async {
+    return _loadUsers();
+  }
 }
